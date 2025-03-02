@@ -22,3 +22,87 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Clickable element hover effects */
+.clickable {
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.clickable:active {
+  transform: translateY(0);
+}
+
+/* Button hover effects */
+.btn {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%);
+  transform-origin: 50% 50%;
+}
+
+.btn:hover::after {
+  animation: ripple 0.6s ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0, 0);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(20, 20);
+    opacity: 0;
+  }
+}
+
+/* Link hover effects */
+.link-hover {
+  position: relative;
+  display: inline-block;
+}
+
+.link-hover::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  transform: scaleX(0);
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: currentColor;
+  transform-origin: bottom right;
+  transition: transform 0.3s ease-out;
+}
+
+.link-hover:hover::after {
+  transform: scaleX(1);
+  transform-origin: bottom left;
+}

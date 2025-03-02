@@ -62,7 +62,11 @@ export default function NewTemplatePage() {
       }
 
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        throw new Error(`Authentication error: ${userError.message}`);
+      }
       
       if (!user) throw new Error('User not authenticated');
 
@@ -73,16 +77,10 @@ export default function NewTemplatePage() {
         name,
         description,
         template_content: templateContent,
-        fields: Object.keys(fieldLabels).map(id => ({
-          id,
-          label: fieldLabels[id]
-        })),
-        field_labels: fieldLabels,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
       };
       
-      console.log('Attempting to create template with data:', templateData);
+      console.log('Attempting to create template with data:', JSON.stringify(templateData));
 
       // Create the template in the database
       const { data, error } = await supabase
@@ -91,7 +89,7 @@ export default function NewTemplatePage() {
         .select();
 
       if (error) {
-        console.error('Supabase error details:', error);
+        console.error('Supabase error details:', JSON.stringify(error));
         throw new Error(`Database error: ${error.message || 'Unknown error'}`);
       }
 
@@ -107,8 +105,9 @@ export default function NewTemplatePage() {
       
     } catch (err: any) {
       console.error('Error creating template:', err);
-      setError(err.message || 'Failed to create template');
-      toast.error(err.message || 'Failed to create template');
+      const errorMessage = err.message || 'Failed to create template';
+      setError(errorMessage);
+      toast.error(errorMessage);
       setIsSubmitting(false);
     }
   };

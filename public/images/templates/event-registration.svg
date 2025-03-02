@@ -1,0 +1,38 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="300" fill="#F0FDF4" />
+  
+  <!-- Form Title -->
+  <rect x="30" y="20" width="340" height="30" rx="4" fill="#FFFFFF" />
+  <text x="50" y="40" font-family="Arial" font-size="14" fill="#047857" font-weight="bold">Event Registration</text>
+  
+  <!-- Name Field -->
+  <rect x="30" y="60" width="340" height="30" rx="4" fill="#FFFFFF" />
+  <text x="40" y="80" font-family="Arial" font-size="12" fill="#4B5563">Full Name</text>
+  
+  <!-- Email Field -->
+  <rect x="30" y="100" width="340" height="30" rx="4" fill="#FFFFFF" />
+  <text x="40" y="120" font-family="Arial" font-size="12" fill="#4B5563">Email Address</text>
+  
+  <!-- Event Selection -->
+  <rect x="30" y="140" width="340" height="30" rx="4" fill="#FFFFFF" />
+  <text x="40" y="160" font-family="Arial" font-size="12" fill="#4B5563">Select Event</text>
+  <rect x="300" y="145" width="20" height="20" rx="2" fill="#D1FAE5" />
+  <path d="M305 155L310 160L315 150" stroke="#047857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Ticket Quantity -->
+  <rect x="30" y="180" width="160" height="30" rx="4" fill="#FFFFFF" />
+  <text x="40" y="200" font-family="Arial" font-size="12" fill="#4B5563">Number of Tickets</text>
+  
+  <!-- Date Selection -->
+  <rect x="210" y="180" width="160" height="30" rx="4" fill="#FFFFFF" />
+  <text x="220" y="200" font-family="Arial" font-size="12" fill="#4B5563">Date</text>
+  
+  <!-- Checkbox -->
+  <rect x="30" y="220" width="20" height="20" rx="4" fill="#FFFFFF" stroke="#047857" />
+  <text x="60" y="235" font-family="Arial" font-size="12" fill="#4B5563">I agree to the terms and conditions</text>
+  
+  <!-- Submit Button -->
+  <rect x="30" y="250" width="120" height="30" rx="4" fill="#047857" />
+  <text x="65" y="270" font-family="Arial" font-size="12" fill="#FFFFFF" font-weight="bold">Register Now</text>
+</svg> 

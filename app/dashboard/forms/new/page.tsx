@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import FormBuilder from '@/components/forms/FormBuilder';
 import TemplateSelector from '@/components/templates/TemplateSelector';
@@ -9,9 +9,30 @@ import { v4 as uuidv4 } from 'uuid';
 
 export default function NewFormPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [initialFormData, setInitialFormData] = useState<any>(null);
+  const fromTemplate = searchParams.get('fromTemplate') === 'true';
+
+  // Load template data from localStorage if coming from template page
+  useEffect(() => {
+    if (fromTemplate) {
+      try {
+        const templateFormData = localStorage.getItem('templateFormData');
+        if (templateFormData) {
+          const parsedData = JSON.parse(templateFormData);
+          setInitialFormData(parsedData);
+          
+          // Clear the localStorage after loading
+          localStorage.removeItem('templateFormData');
+        }
+      } catch (err) {
+        console.error('Error loading template data:', err);
+      }
+    }
+  }, [fromTemplate]);
 
   const handleFormSubmit = async (formData: any) => {
     setIsSubmitting(true);
@@ -47,8 +68,9 @@ export default function NewFormPage() {
           title: formData.title,
           description: formData.description,
           fields: formData.fields,
+          field_labels: formData.fields.map((field: any) => field.label),
           public: formData.isPublic,
-          template_id: formData.template_id,
+          template_id: formData.template_id || (initialFormData?.templateId || null),
         })
         .select();
 
@@ -74,13 +96,15 @@ export default function NewFormPage() {
         </div>
       )}
       
-      <div className="bg-white p-6 rounded-lg shadow-sm border mb-6">
-        <h2 className="text-xl font-semibold mb-4">Template Selection</h2>
-        <TemplateSelector 
-          onSelect={setSelectedTemplateId} 
-          selectedTemplateId={selectedTemplateId} 
-        />
-      </div>
+      {!fromTemplate && (
+        <div className="bg-white p-6 rounded-lg shadow-sm border mb-6">
+          <h2 className="text-xl font-semibold mb-4">Template Selection</h2>
+          <TemplateSelector 
+            onSelect={setSelectedTemplateId} 
+            selectedTemplateId={selectedTemplateId} 
+          />
+        </div>
+      )}
       
       <div className="bg-white p-6 rounded-lg shadow-sm border">
         <h2 className="text-xl font-semibold mb-4">Form Builder</h2>
@@ -88,6 +112,7 @@ export default function NewFormPage() {
           onSubmit={handleFormSubmit} 
           isSubmitting={isSubmitting}
           template_id={selectedTemplateId || undefined}
+          initialData={initialFormData}
         />
       </div>
     </div>

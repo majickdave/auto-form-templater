@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
@@ -13,7 +13,9 @@ interface FormResponse {
   submitted_at: string;
 }
 
-export default function FormResponsesPage({ params }: { params: { id: string } }) {
+export default function FormResponsesPage() {
+  const params = useParams();
+  const formId = '0'; // Hardcoded to 0 for this specific route
   const router = useRouter();
   const [form, setForm] = useState<any>(null);
   const [responses, setResponses] = useState<FormResponse[]>([]);
@@ -35,7 +37,7 @@ export default function FormResponsesPage({ params }: { params: { id: string } }
         const { data: formData, error: formError } = await supabase
           .from('forms')
           .select('*')
-          .eq('id', params.id)
+          .eq('id', formId)
           .single();
 
         if (formError) throw formError;
@@ -51,7 +53,7 @@ export default function FormResponsesPage({ params }: { params: { id: string } }
         const { data: responseData, error: responseError } = await supabase
           .from('form_responses')
           .select('*')
-          .eq('form_id', params.id)
+          .eq('form_id', formId)
           .order('submitted_at', { ascending: false });
 
         if (responseError) throw responseError;
@@ -67,7 +69,7 @@ export default function FormResponsesPage({ params }: { params: { id: string } }
     };
 
     fetchData();
-  }, [params.id, router]);
+  }, [formId, router]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -168,7 +170,7 @@ export default function FormResponsesPage({ params }: { params: { id: string } }
         </div>
         <div className="flex space-x-3">
           <Link
-            href={`/dashboard/forms/${params.id}`}
+            href={`/dashboard/forms/${formId}`}
             className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
           >
             Back to Form
@@ -242,7 +244,7 @@ export default function FormResponsesPage({ params }: { params: { id: string } }
                     })}
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link
-                        href={`/dashboard/forms/${params.id}/responses/${response.id}`}
+                        href={`/dashboard/forms/${formId}/responses/${response.id}`}
                         className="text-blue-600 hover:text-blue-900"
                       >
                         View Details

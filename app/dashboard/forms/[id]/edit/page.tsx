@@ -207,7 +207,7 @@ export default function FormEditPage() {
         <h1 className="text-2xl font-bold">Edit Form</h1>
         <div className="space-x-3">
           <Link 
-            href={`/dashboard/forms/${formId}`}
+            href="/dashboard"
             className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
           >
             Cancel

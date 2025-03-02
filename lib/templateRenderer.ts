@@ -39,8 +39,24 @@ export function renderTemplate(template: Template, formResponse: FormResponse): 
     return '';
   }
 
-  // Get the field labels from the template
-  const fieldLabels = template.field_labels || {};
+  // Extract field labels from template content
+  const extractFieldLabels = (content: string) => {
+    const regex = /{{([^}]+)}}/g;
+    let match;
+    const fields: Record<string, string> = {};
+    
+    while ((match = regex.exec(content)) !== null) {
+      const fieldName = match[1].trim();
+      // Convert field name to a valid ID (lowercase, no spaces)
+      const fieldId = fieldName.toLowerCase().replace(/\s+/g, '_');
+      fields[fieldId] = fieldName;
+    }
+    
+    return fields;
+  };
+
+  // Get the field labels from the template content
+  const fieldLabels = template.field_labels || extractFieldLabels(template.template_content);
   
   // Create a mapping from field IDs to their values in the form response
   const fieldValues: Record<string, any> = {};

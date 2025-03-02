@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [isUpdatingTemplate, setIsUpdatingTemplate] = useState<string | null>(null);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [formResponseCounts, setFormResponseCounts] = useState<Record<string, number>>({});
+  const [isDeleting, setIsDeleting] = useState<{id: string, type: 'form' | 'template'} | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -302,6 +303,317 @@ export default function Dashboard() {
     router.push(`/dashboard/forms/${formId}/generate-document`);
   };
 
+  // Function to handle form deletion
+  const handleDeleteForm = async (formId: string) => {
+    // Create a modal dialog for confirmation
+    const confirmDialog = document.createElement('div');
+    confirmDialog.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    confirmDialog.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+        <h3 class="text-lg font-medium mb-4">Delete Form</h3>
+        <p class="mb-6">Are you sure you want to delete this form? This action cannot be undone.</p>
+        <div class="flex justify-end space-x-3">
+          <button id="cancel-delete" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+            Cancel
+          </button>
+          <button id="confirm-delete" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+            Delete
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(confirmDialog);
+    
+    // Handle button clicks
+    const cancelButton = document.getElementById('cancel-delete');
+    const confirmButton = document.getElementById('confirm-delete');
+    
+    return new Promise<void>((resolve) => {
+      cancelButton?.addEventListener('click', () => {
+        document.body.removeChild(confirmDialog);
+        resolve();
+      });
+      
+      confirmButton?.addEventListener('click', async () => {
+        document.body.removeChild(confirmDialog);
+        
+        setIsDeleting({ id: formId, type: 'form' });
+        
+        try {
+          // Check if form has responses
+          const { count, error: countError } = await supabase
+            .from('form_responses')
+            .select('id', { count: 'exact', head: true })
+            .eq('form_id', formId);
+            
+          if (countError) throw countError;
+          
+          if (count && count > 0) {
+            // Create another confirmation dialog for responses
+            const responseConfirmDialog = document.createElement('div');
+            responseConfirmDialog.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            responseConfirmDialog.innerHTML = `
+              <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+                <h3 class="text-lg font-medium mb-4">Delete Form Responses</h3>
+                <p class="mb-6">This form has ${count} ${count === 1 ? 'response' : 'responses'}. Deleting it will also delete all responses. Continue?</p>
+                <div class="flex justify-end space-x-3">
+                  <button id="cancel-response-delete" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                    Cancel
+                  </button>
+                  <button id="confirm-response-delete" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                    Delete Everything
+                  </button>
+                </div>
+              </div>
+            `;
+            
+            document.body.appendChild(responseConfirmDialog);
+            
+            const cancelResponseButton = document.getElementById('cancel-response-delete');
+            const confirmResponseButton = document.getElementById('confirm-response-delete');
+            
+            cancelResponseButton?.addEventListener('click', () => {
+              document.body.removeChild(responseConfirmDialog);
+              setIsDeleting(null);
+              resolve();
+            });
+            
+            confirmResponseButton?.addEventListener('click', async () => {
+              document.body.removeChild(responseConfirmDialog);
+              
+              // Delete form responses first
+              const { error: responseDeleteError } = await supabase
+                .from('form_responses')
+                .delete()
+                .eq('form_id', formId);
+                
+              if (responseDeleteError) throw responseDeleteError;
+              
+              // Continue with form deletion
+              await deleteFormAndUpdateState(formId);
+              resolve();
+            });
+            
+            return;
+          }
+          
+          // If no responses, proceed with deletion
+          await deleteFormAndUpdateState(formId);
+          resolve();
+        } catch (error) {
+          console.error('Error deleting form:', error);
+          setNotification({
+            message: 'Failed to delete form. Please try again.',
+            type: 'error'
+          });
+          setIsDeleting(null);
+          resolve();
+        }
+      });
+    });
+  };
+  
+  // Helper function to delete form and update state
+  const deleteFormAndUpdateState = async (formId: string) => {
+    try {
+      // Get the template_id before deleting the form
+      const templateId = formTemplateMapping[formId];
+      
+      // Delete the form
+      const { error: formDeleteError } = await supabase
+        .from('forms')
+        .delete()
+        .eq('id', formId);
+        
+      if (formDeleteError) throw formDeleteError;
+      
+      // If the form had a template, update the template's form_id to null
+      if (templateId) {
+        const { error: templateUpdateError } = await supabase
+          .from('templates')
+          .update({ form_id: null })
+          .eq('id', templateId);
+          
+        if (templateUpdateError) {
+          console.warn('Warning: Could not update template association', templateUpdateError);
+        }
+      }
+      
+      // Update local state
+      setForms(forms.filter(form => form.id !== formId));
+      
+      // Remove from formTemplateMapping
+      const newMapping = { ...formTemplateMapping };
+      delete newMapping[formId];
+      setFormTemplateMapping(newMapping);
+      
+      // Remove from formResponseCounts
+      const newCounts = { ...formResponseCounts };
+      delete newCounts[formId];
+      setFormResponseCounts(newCounts);
+      
+      setNotification({
+        message: 'Form deleted successfully',
+        type: 'success'
+      });
+    } catch (error) {
+      console.error('Error in deleteFormAndUpdateState:', error);
+      throw error;
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+  
+  // Function to handle template deletion
+  const handleDeleteTemplate = async (templateId: string) => {
+    // Create a modal dialog for confirmation
+    const confirmDialog = document.createElement('div');
+    confirmDialog.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    confirmDialog.innerHTML = `
+      <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+        <h3 class="text-lg font-medium mb-4">Delete Template</h3>
+        <p class="mb-6">Are you sure you want to delete this template? This action cannot be undone.</p>
+        <div class="flex justify-end space-x-3">
+          <button id="cancel-template-delete" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+            Cancel
+          </button>
+          <button id="confirm-template-delete" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+            Delete
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(confirmDialog);
+    
+    // Handle button clicks
+    const cancelButton = document.getElementById('cancel-template-delete');
+    const confirmButton = document.getElementById('confirm-template-delete');
+    
+    return new Promise<void>((resolve) => {
+      cancelButton?.addEventListener('click', () => {
+        document.body.removeChild(confirmDialog);
+        resolve();
+      });
+      
+      confirmButton?.addEventListener('click', async () => {
+        document.body.removeChild(confirmDialog);
+        
+        setIsDeleting({ id: templateId, type: 'template' });
+        
+        try {
+          // Check if template is associated with any forms
+          const template = templates.find(t => t.id === templateId);
+          
+          if (template?.hasAssociatedForm) {
+            // Create another confirmation dialog for form association
+            const associationConfirmDialog = document.createElement('div');
+            associationConfirmDialog.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            associationConfirmDialog.innerHTML = `
+              <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+                <h3 class="text-lg font-medium mb-4">Template Association</h3>
+                <p class="mb-6">This template is associated with a form. Deleting it will remove the association. Continue?</p>
+                <div class="flex justify-end space-x-3">
+                  <button id="cancel-association-delete" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
+                    Cancel
+                  </button>
+                  <button id="confirm-association-delete" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                    Delete Anyway
+                  </button>
+                </div>
+              </div>
+            `;
+            
+            document.body.appendChild(associationConfirmDialog);
+            
+            const cancelAssociationButton = document.getElementById('cancel-association-delete');
+            const confirmAssociationButton = document.getElementById('confirm-association-delete');
+            
+            cancelAssociationButton?.addEventListener('click', () => {
+              document.body.removeChild(associationConfirmDialog);
+              setIsDeleting(null);
+              resolve();
+            });
+            
+            confirmAssociationButton?.addEventListener('click', async () => {
+              document.body.removeChild(associationConfirmDialog);
+              
+              // Find the form that uses this template
+              const formId = Object.entries(formTemplateMapping).find(([_, tId]) => tId === templateId)?.[0];
+              
+              if (formId) {
+                // Update the form to remove template association
+                const { error: formUpdateError } = await supabase
+                  .from('forms')
+                  .update({ template_id: null })
+                  .eq('id', formId);
+                  
+                if (formUpdateError) {
+                  console.warn('Warning: Could not update form association', formUpdateError);
+                } else {
+                  // Update local state for form-template mapping
+                  const newMapping = { ...formTemplateMapping };
+                  newMapping[formId] = null;
+                  setFormTemplateMapping(newMapping);
+                  
+                  // Update forms state
+                  setForms(forms.map(form => 
+                    form.id === formId ? { ...form, template_id: null } : form
+                  ));
+                }
+              }
+              
+              // Continue with template deletion
+              await deleteTemplateAndUpdateState(templateId);
+              resolve();
+            });
+            
+            return;
+          }
+          
+          // If no form association, proceed with deletion
+          await deleteTemplateAndUpdateState(templateId);
+          resolve();
+        } catch (error) {
+          console.error('Error deleting template:', error);
+          setNotification({
+            message: 'Failed to delete template. Please try again.',
+            type: 'error'
+          });
+          setIsDeleting(null);
+          resolve();
+        }
+      });
+    });
+  };
+  
+  // Helper function to delete template and update state
+  const deleteTemplateAndUpdateState = async (templateId: string) => {
+    try {
+      // Delete the template
+      const { error: templateDeleteError } = await supabase
+        .from('templates')
+        .delete()
+        .eq('id', templateId);
+        
+      if (templateDeleteError) throw templateDeleteError;
+      
+      // Update local state
+      setTemplates(templates.filter(template => template.id !== templateId));
+      
+      setNotification({
+        message: 'Template deleted successfully',
+        type: 'success'
+      });
+    } catch (error) {
+      console.error('Error in deleteTemplateAndUpdateState:', error);
+      throw error;
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {notification && (
@@ -364,7 +676,21 @@ export default function Dashboard() {
             {forms.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {forms.map((form) => (
-                  <div key={form.id} className="border rounded-lg p-4 hover:shadow-md transition">
+                  <div key={form.id} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                    <button
+                      onClick={() => handleDeleteForm(form.id)}
+                      className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-full transition-colors"
+                      disabled={isDeleting !== null}
+                      title="Delete form"
+                    >
+                      {isDeleting?.id === form.id && isDeleting?.type === 'form' ? (
+                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></span>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                    </button>
                     <h3 className="text-lg font-medium">{form.title}</h3>
                     <p className="text-gray-500 text-sm mb-3">
                       {form.description || 'No description'}
@@ -397,12 +723,6 @@ export default function Dashboard() {
                         >
                           Open
                         </button>
-                        <Link
-                          href={`/dashboard/forms/${form.id}`}
-                          className="p-1 text-gray-600 hover:text-gray-800 link-hover"
-                        >
-                          View
-                        </Link>
                         <Link
                           href={`/dashboard/forms/${form.id}/edit`}
                           className="p-1 text-gray-600 hover:text-gray-800 link-hover"
@@ -519,7 +839,21 @@ export default function Dashboard() {
             {templates.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {templates.map((template) => (
-                  <div key={template.id} className="border rounded-lg p-4 hover:shadow-md transition">
+                  <div key={template.id} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                    <button
+                      onClick={() => handleDeleteTemplate(template.id)}
+                      className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-full transition-colors"
+                      disabled={isDeleting !== null}
+                      title="Delete template"
+                    >
+                      {isDeleting?.id === template.id && isDeleting?.type === 'template' ? (
+                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></span>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                    </button>
                     <h3 className="text-lg font-medium">{template.name}</h3>
                     <p className="text-gray-500 text-sm mb-3">
                       {template.description || 'No description'}

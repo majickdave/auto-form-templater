@@ -1,0 +1,11 @@
+{
+  "name": "form-templater-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for Form Templater application",
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0",
+    "dotenv": "^16.3.1",
+    "uuid": "^9.0.1"
+  }
+} 

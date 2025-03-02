@@ -1,0 +1,32 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="300" fill="#F0F9FF" />
+  
+  <!-- Form Title -->
+  <rect x="30" y="20" width="340" height="30" rx="4" fill="#FFFFFF" />
+  <text x="50" y="40" font-family="Arial" font-size="14" fill="#0369A1" font-weight="bold">Contact Us</text>
+  
+  <!-- Name Field -->
+  <rect x="30" y="60" width="340" height="30" rx="4" fill="#FFFFFF" />
+  <text x="40" y="80" font-family="Arial" font-size="12" fill="#4B5563">Full Name</text>
+  
+  <!-- Email Field -->
+  <rect x="30" y="100" width="340" height="30" rx="4" fill="#FFFFFF" />
+  <text x="40" y="120" font-family="Arial" font-size="12" fill="#4B5563">Email Address</text>
+  
+  <!-- Subject Field -->
+  <rect x="30" y="140" width="340" height="30" rx="4" fill="#FFFFFF" />
+  <text x="40" y="160" font-family="Arial" font-size="12" fill="#4B5563">Subject</text>
+  
+  <!-- Message Field -->
+  <rect x="30" y="180" width="340" height="60" rx="4" fill="#FFFFFF" />
+  <text x="40" y="200" font-family="Arial" font-size="12" fill="#4B5563">Message</text>
+  
+  <!-- Newsletter Checkbox -->
+  <rect x="30" y="250" width="20" height="20" rx="4" fill="#FFFFFF" stroke="#0369A1" />
+  <text x="60" y="265" font-family="Arial" font-size="12" fill="#4B5563">Subscribe to newsletter</text>
+  
+  <!-- Submit Button -->
+  <rect x="30" y="280" width="120" height="30" rx="4" fill="#0369A1" />
+  <text x="65" y="300" font-family="Arial" font-size="12" fill="#FFFFFF" font-weight="bold">Send Message</text>
+</svg> 

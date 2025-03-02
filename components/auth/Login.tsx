@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const router = useRouter();  // Add useRouter hook for navigation
+  const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,6 +17,12 @@ export default function Login() {
     setMessage('');
 
     try {
+      const supabase = createClient();
+      
+      // First, ensure any existing sessions are cleared
+      await supabase.auth.signOut();
+      
+      // Then attempt to sign in
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -30,9 +36,11 @@ export default function Login() {
         router.push('/dashboard');
       } else {
         setMessage('Login successful, but no session was created.');
+        setLoading(false);
       }
     } catch (error: any) {
-      setMessage(error.message);
+      console.error('Login error:', error);
+      setMessage(error.message || 'An error occurred during login');
       setLoading(false);
     }
   };

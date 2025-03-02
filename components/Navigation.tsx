@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -19,26 +19,47 @@ export default function Navigation() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsLoggedIn(!!session);
-      
-      if (session?.user?.email) {
-        setUserEmail(session.user.email);
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session error:', error);
+          setIsLoggedIn(false);
+          setIsLoading(false);
+          return;
+        }
+        
+        setIsLoggedIn(!!data.session);
+        
+        if (data.session?.user?.email) {
+          setUserEmail(data.session.user.email);
+        }
+      } catch (err) {
+        console.error('Error checking session:', err);
+        setIsLoggedIn(false);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
     
     checkSession();
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      setIsLoggedIn(false);
+      setUserEmail(null);
+      router.push('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   return (
-    <nav className="bg-white shadow-sm mb-6">
+    <nav className="bg-white shadow-sm mb-6 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
@@ -89,6 +110,23 @@ export default function Navigation() {
               >
                 Logout
               </button>
+            </div>
+          )}
+          
+          {!isLoggedIn && !isLoading && (
+            <div className="flex items-center space-x-4">
+              <Link
+                href="/login"
+                className="px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              >
+                Login
+              </Link>
+              <Link
+                href="/signup"
+                className="px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+              >
+                Sign Up
+              </Link>
             </div>
           )}
         </div>

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import DocumentGenerator from '@/components/templates/DocumentGenerator';
+import React from 'react';
 
 interface FormField {
   id: string;
@@ -39,6 +40,10 @@ interface Template {
   fields: any[];
 }
 
+interface PageParams {
+  id: string;
+}
+
 export default function FormResponsesPage() {
   const params = useParams();
   const router = useRouter();
@@ -48,6 +53,7 @@ export default function FormResponsesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedResponse, setSelectedResponse] = useState<FormResponse | null>(null);
+  const formId = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : '';
 
   useEffect(() => {
     async function fetchData() {
@@ -55,9 +61,19 @@ export default function FormResponsesPage() {
       
       try {
         // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        const { data, error: userError } = await supabase.auth.getUser();
         
-        if (userError || !user) {
+        if (userError) {
+          console.error('Auth error:', userError);
+          // If there's a refresh token error, redirect to login
+          if (userError.message?.includes('Refresh Token') || userError.code === 'refresh_token_not_found') {
+            router.push('/login');
+            return;
+          }
+          throw userError;
+        }
+        
+        if (!data.user) {
           router.push('/login');
           return;
         }
@@ -66,7 +82,7 @@ export default function FormResponsesPage() {
         const { data: formData, error: formError } = await supabase
           .from('forms')
           .select('*')
-          .eq('id', params.id)
+          .eq('id', formId)
           .single();
         
         if (formError) {
@@ -78,7 +94,7 @@ export default function FormResponsesPage() {
         }
         
         // Check if user owns this form
-        if (formData.user_id !== user.id) {
+        if (formData.user_id !== data.user.id) {
           setError('You do not have permission to view responses for this form');
           setLoading(false);
           return;
@@ -90,7 +106,7 @@ export default function FormResponsesPage() {
         const { data: responseData, error: responseError } = await supabase
           .from('form_responses')
           .select('*')
-          .eq('form_id', params.id)
+          .eq('form_id', formId)
           .order('created_at', { ascending: false });
         
         if (responseError) throw responseError;
@@ -118,10 +134,10 @@ export default function FormResponsesPage() {
       }
     }
     
-    if (params.id) {
+    if (formId) {
       fetchData();
     }
-  }, [params.id, router]);
+  }, [formId, router]);
 
   // Format date for display
   const formatDate = (dateString: string) => {

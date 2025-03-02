@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import React from 'react';
 import DocumentGenerator from '@/components/templates/DocumentGenerator';
 
-export default function PublicFormPage({ params }: { params: { id: string } }) {
+export default function PublicFormPage() {
+  const params = useParams();
   const router = useRouter();
   const [formId, setFormId] = useState<string>('');
   const [form, setForm] = useState<any>(null);
@@ -22,7 +23,7 @@ export default function PublicFormPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     if (params && params.id) {
-      setFormId(params.id);
+      setFormId(typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : '');
     }
   }, [params]);
 

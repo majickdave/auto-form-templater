@@ -155,35 +155,35 @@ export default function ResponseDetailPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Response Details</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Response Details</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             Form: {form.title}
           </p>
         </div>
         <div className="space-x-3">
           <Link 
             href={`/dashboard/forms/${formId}/responses`}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
           >
             Back to Responses
           </Link>
           <button
             onClick={deleteResponse}
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            className="px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-800 transition-colors"
           >
             Delete Response
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 bg-gray-50 border-b">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-lg font-medium">Response Information</h2>
-              <p className="text-sm text-gray-500">Submitted on {formatDate(response.created_at || '')}</p>
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white">Response Information</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Submitted on {formatDate(response.created_at || '')}</p>
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
               {response.respondent_email ? (
                 <span>From: {response.respondent_email}</span>
               ) : (
@@ -194,11 +194,11 @@ export default function ResponseDetailPage() {
         </div>
         
         <div className="p-6">
-          <dl className="divide-y divide-gray-200">
+          <dl className="divide-y divide-gray-200 dark:divide-gray-700">
             {form.fields.map((field) => (
               <div key={field.id} className="py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                <dt className="text-sm font-medium text-gray-500">{field.label}</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{field.label}</dt>
+                <dd className="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">
                   {renderResponseValue(response.data[field.id], field.type)}
                 </dd>
               </div>
@@ -210,7 +210,7 @@ export default function ResponseDetailPage() {
       {/* Rendered Template Section */}
       {form.template_id && (
         <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4">Template with Response Data</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Template with Response Data</h2>
           <TemplateRenderer templateId={form.template_id} formResponse={response} />
         </div>
       )}
@@ -220,7 +220,7 @@ export default function ResponseDetailPage() {
 
 function renderResponseValue(value: any, fieldType: string) {
   if (value === undefined || value === null) {
-    return <span className="text-gray-400">No response</span>;
+    return <span className="text-gray-400 dark:text-gray-500">No response</span>;
   }
   
   if (Array.isArray(value)) {

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { v4 as uuidv4 } from 'uuid';
 
 interface TemplateField {
   id: string;
@@ -190,9 +191,9 @@ export default function TemplateViewPage() {
       
       if (checkError) throw checkError;
       
-      // If a form already exists, redirect to it
+      // If a form already exists with this template, navigate to it
       if (existingForms && existingForms.length > 0) {
-        router.push(`/dashboard/forms/${existingForms[0].id}/edit`);
+        router.push(`/dashboard/forms/${existingForms[0].id}`);
         return;
       }
 
@@ -200,19 +201,21 @@ export default function TemplateViewPage() {
       const { data, error } = await supabase
         .from('forms')
         .insert({
-          title: `${template.name} Form`,
-          description: template.description,
+          id: uuidv4(),
           user_id: user.id,
-          template_id: template.id,
+          title: template.name,
+          description: template.description || '',
           fields: template.fields || [],
-          public: false,
+          field_labels: (template.fields || []).map((field: any) => field.label),
+          public: true,
+          template_id: template.id
         })
         .select();
 
       if (error) throw error;
 
       // Redirect to the form edit page
-      router.push(`/dashboard/forms/${data[0].id}/edit`);
+      router.push(`/dashboard/forms/${data[0].id}`);
       
     } catch (err: any) {
       console.error('Error creating form from template:', err);

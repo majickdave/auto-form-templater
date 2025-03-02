@@ -34,6 +34,7 @@ export default function Dashboard() {
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [formResponseCounts, setFormResponseCounts] = useState<Record<string, number>>({});
   const [isDeleting, setIsDeleting] = useState<{id: string, type: 'form' | 'template'} | null>(null);
+  const [copiedFormId, setCopiedFormId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -190,7 +191,14 @@ export default function Dashboard() {
   const copyShareLink = (formId: string) => {
     const shareUrl = `${window.location.origin}/forms/${formId}`;
     navigator.clipboard.writeText(shareUrl);
-    alert('Share link copied to clipboard!');
+    
+    // Set the copied form ID
+    setCopiedFormId(formId);
+    
+    // Reset after 3 seconds
+    setTimeout(() => {
+      setCopiedFormId(null);
+    }, 3000);
   };
 
   // Function to open form in a new window
@@ -300,7 +308,7 @@ export default function Dashboard() {
 
   // Function to navigate to form responses page
   const navigateToResponses = (formId: string) => {
-    router.push(`/dashboard/forms/${formId}/generate-document`);
+    router.push(`/dashboard/forms/${formId}/responses`);
   };
 
   // Function to handle form deletion
@@ -616,299 +624,388 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Dashboard Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-800 dark:to-indigo-900 rounded-xl shadow-lg overflow-hidden">
+        <div className="px-6 py-8 sm:px-8 sm:py-10">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">Dashboard</h1>
+              <p className="mt-2 text-blue-100">Manage your forms and templates</p>
+            </div>
+            <button
+              onClick={refreshData}
+              className="mt-4 sm:mt-0 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all duration-200 flex items-center space-x-2 backdrop-blur-sm"
+              disabled={loading}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       {notification && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-md ${
-          notification.type === 'success' ? 'bg-green-100 border-l-4 border-green-500 text-green-700' : 
-          'bg-red-100 border-l-4 border-red-500 text-red-700'
-        }`}>
-          <div className="flex">
+        <div 
+          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-md transform transition-all duration-300 ease-in-out ${
+            notification.type === 'success' 
+              ? 'bg-green-50 dark:bg-green-900 border-l-4 border-green-500' 
+              : 'bg-red-50 dark:bg-red-900 border-l-4 border-red-500'
+          }`}
+        >
+          <div className="flex items-start">
             <div className="flex-shrink-0">
               {notification.type === 'success' ? (
-                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-5 w-5 text-green-500 dark:text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
               ) : (
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-5 w-5 text-red-500 dark:text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               )}
             </div>
             <div className="ml-3">
-              <p className="text-sm">{notification.message}</p>
+              <p className={`text-sm font-medium ${
+                notification.type === 'success' 
+                  ? 'text-green-800 dark:text-green-200' 
+                  : 'text-red-800 dark:text-red-200'
+              }`}>
+                {notification.message}
+              </p>
+            </div>
+            <div className="ml-auto pl-3">
+              <div className="-mx-1.5 -my-1.5">
+                <button
+                  onClick={() => setNotification(null)}
+                  className={`inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    notification.type === 'success' 
+                      ? 'text-green-500 hover:bg-green-100 dark:hover:bg-green-800 focus:ring-green-600 dark:focus:ring-green-500' 
+                      : 'text-red-500 hover:bg-red-100 dark:hover:bg-red-800 focus:ring-red-600 dark:focus:ring-red-500'
+                  }`}
+                >
+                  <span className="sr-only">Dismiss</span>
+                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
       
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <div className="space-x-3 flex items-center">
-          <button
-            onClick={refreshData}
-            className="p-2 text-gray-600 hover:text-gray-900 rounded-full hover:bg-gray-100 clickable"
-            title="Refresh data"
-            disabled={loading}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
       {loading ? (
         <div className="flex justify-center py-10">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 dark:border-blue-400"></div>
         </div>
       ) : (
         <>
           {/* Forms Section */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Your Forms</h2>
-              <Link 
-                href="/dashboard/forms/new" 
-                className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm btn"
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden transition-colors duration-200">
+            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Your Forms</h2>
+              <Link
+                href="/dashboard/forms/new"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white rounded-lg transition-colors flex items-center gap-2"
               >
-                + New Form
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                New Form
               </Link>
             </div>
-            {forms.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {forms.map((form) => (
-                  <div key={form.id} className="border rounded-lg p-4 hover:shadow-md transition relative">
-                    <button
-                      onClick={() => handleDeleteForm(form.id)}
-                      className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-full transition-colors"
-                      disabled={isDeleting !== null}
-                      title="Delete form"
-                    >
-                      {isDeleting?.id === form.id && isDeleting?.type === 'form' ? (
-                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></span>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                    </button>
-                    <h3 className="text-lg font-medium">{form.title}</h3>
-                    <p className="text-gray-500 text-sm mb-3">
-                      {form.description || 'No description'}
-                    </p>
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex space-x-2">
-                        <span className={`inline-block px-2 py-1 text-xs rounded ${
-                          form.public ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {form.public ? 'Public' : 'Private'}
-                        </span>
-                        {formTemplateMapping[form.id] && (
-                          <span className="inline-block px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
-                            Has Template
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex space-x-2">
+            <div className="p-6">
+              {forms.length > 0 ? (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {forms.map((form) => (
+                    <div key={form.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 relative group">
+                      <div className="p-5">
                         <button
-                          onClick={() => copyShareLink(form.id)}
-                          className="p-1 text-blue-600 hover:text-blue-800 link-hover"
-                          title="Copy share link"
+                          onClick={() => handleDeleteForm(form.id)}
+                          className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                          disabled={isDeleting !== null}
+                          title="Delete form"
                         >
-                          Share
-                        </button>
-                        <button
-                          onClick={() => openFormInNewWindow(form.id)}
-                          className="p-1 text-purple-600 hover:text-purple-800 link-hover"
-                          title="Open form in new window"
-                        >
-                          Open
-                        </button>
-                        <Link
-                          href={`/dashboard/forms/${form.id}/edit`}
-                          className="p-1 text-gray-600 hover:text-gray-800 link-hover"
-                        >
-                          Edit
-                        </Link>
-                        <Link
-                          href={`/dashboard/forms/${form.id}/responses`}
-                          className="p-1 text-gray-600 hover:text-gray-800 link-hover"
-                        >
-                          Responses
-                        </Link>
-                      </div>
-                    </div>
-                    
-                    {/* Generate Document Button - only show if form has template and responses */}
-                    {formTemplateMapping[form.id] && (
-                      <div className="mb-3">
-                        {formResponseCounts[form.id] > 0 ? (
-                          <button
-                            onClick={() => navigateToResponses(form.id)}
-                            className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center justify-center btn"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          {isDeleting?.id === form.id && isDeleting?.type === 'form' ? (
+                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></span>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
-                            View & Generate Documents ({formResponseCounts[form.id]} {formResponseCounts[form.id] === 1 ? 'response' : 'responses'})
-                          </button>
-                        ) : (
-                          <div className="text-center p-2 bg-gray-100 rounded text-sm text-gray-600">
-                            <p className="mb-2">No responses yet. Share your form to collect responses for document generation.</p>
-                            <button
-                              onClick={() => copyShareLink(form.id)}
-                              className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 btn"
-                            >
-                              Copy Form Link
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    {/* Template Association Dropdown */}
-                    <div className="mt-3 border-t pt-3">
-                      <div className="flex items-center justify-between">
-                        <label htmlFor={`template-${form.id}`} className="block text-sm font-medium text-gray-700">
-                          Associated Template:
-                        </label>
-                        {isUpdatingTemplate === form.id && (
-                          <div className="ml-2 animate-spin h-4 w-4 border-t-2 border-blue-500 rounded-full"></div>
-                        )}
-                      </div>
-                      <div className="mt-1 relative">
-                        <select
-                          id={`template-${form.id}`}
-                          value={formTemplateMapping[form.id] || ''}
-                          onChange={(e) => handleTemplateAssociation(form.id, e.target.value === '' ? null : e.target.value)}
-                          disabled={isUpdatingTemplate === form.id}
-                          className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md clickable"
-                        >
-                          <option value="">No Template</option>
-                          {templates
-                            .filter(template => !template.hasAssociatedForm || template.id === formTemplateMapping[form.id])
-                            .map(template => (
-                              <option key={template.id} value={template.id}>
-                                {template.name}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                      <div className="mt-2 flex justify-between items-center">
-                        <p className="text-xs text-gray-500">
-                          {formTemplateMapping[form.id] 
-                            ? "This form is using a template for document generation" 
-                            : "Associate a template to enable document generation"}
+                          )}
+                        </button>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{form.title}</h3>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mb-4 line-clamp-2">
+                          {form.description || 'No description'}
                         </p>
-                        {formTemplateMapping[form.id] && (
-                          <Link
-                            href={`/dashboard/templates/${formTemplateMapping[form.id]}`}
-                            className="text-xs text-blue-600 hover:text-blue-800 link-hover"
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          <span className={`inline-block px-2.5 py-1 text-xs font-medium rounded-full ${
+                            form.public 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
+                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                          }`}>
+                            {form.public ? 'Public' : 'Private'}
+                          </span>
+                          {formTemplateMapping[form.id] && (
+                            <span className="inline-block px-2.5 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                              Has Template
+                            </span>
+                          )}
+                          {formResponseCounts[form.id] > 0 && (
+                            <span className="inline-block px-2.5 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300">
+                              {formResponseCounts[form.id]} {formResponseCounts[form.id] === 1 ? 'Response' : 'Responses'}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => copyShareLink(form.id)}
+                            className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors flex items-center gap-1.5"
+                            title="Copy share link"
                           >
-                            View Template
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                            </svg>
+                            {copiedFormId === form.id ? 'Copied!' : 'Share'}
+                          </button>
+                          <button
+                            onClick={() => openFormInNewWindow(form.id)}
+                            className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors flex items-center gap-1.5"
+                            title="Open form in new window"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            Open
+                          </button>
+                          <Link
+                            href={`/dashboard/forms/${form.id}`}
+                            className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors flex items-center gap-1.5"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit
                           </Link>
-                        )}
+                          <Link
+                            href={`/dashboard/forms/${form.id}/responses`}
+                            className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors flex items-center gap-1.5"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            Responses
+                          </Link>
+                        </div>
+                      </div>
+                      
+                      {/* Generate Document Button - only show if form has template and responses */}
+                      {formTemplateMapping[form.id] && (
+                        <div className="px-5 pb-5">
+                          {formResponseCounts[form.id] > 0 ? (
+                            <button
+                              onClick={() => navigateToResponses(form.id)}
+                              className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg transition-all duration-200 flex items-center justify-center"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              Generate Documents
+                            </button>
+                          ) : (
+                            <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300">
+                              <p className="mb-2">No responses yet. Share your form to collect responses.</p>
+                              <button
+                                onClick={() => copyShareLink(form.id)}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"
+                              >
+                                Copy Form Link
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Template Association Dropdown */}
+                      <div className="px-5 pb-5 border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <div className="flex items-center justify-between">
+                          <label htmlFor={`template-${form.id}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Associated Template:
+                          </label>
+                          {isUpdatingTemplate === form.id && (
+                            <div className="ml-2 animate-spin h-4 w-4 border-t-2 border-blue-500 dark:border-blue-400 rounded-full"></div>
+                          )}
+                        </div>
+                        <div className="mt-1.5 relative">
+                          <select
+                            id={`template-${form.id}`}
+                            value={formTemplateMapping[form.id] || ''}
+                            onChange={(e) => handleTemplateAssociation(form.id, e.target.value === '' ? null : e.target.value)}
+                            disabled={isUpdatingTemplate === form.id}
+                            className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 sm:text-sm rounded-lg transition-colors"
+                          >
+                            <option value="">No Template</option>
+                            {templates
+                              .filter(template => !template.hasAssociatedForm || template.id === formTemplateMapping[form.id])
+                              .map(template => (
+                                <option key={template.id} value={template.id}>
+                                  {template.name}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                        <div className="mt-2 flex justify-between items-center">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {formTemplateMapping[form.id] 
+                              ? "Template linked for document generation" 
+                              : "Link a template for document generation"}
+                          </p>
+                          {formTemplateMapping[form.id] && (
+                            <Link
+                              href={`/dashboard/templates/${formTemplateMapping[form.id]}`}
+                              className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                            >
+                              View Template
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 px-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">No forms yet</h3>
+                  <p className="mt-2 text-gray-500 dark:text-gray-400 max-w-md mx-auto">Get started by creating your first form to collect responses from users.</p>
+                  <div className="mt-6">
+                    <Link
+                      href="/dashboard/forms/new"
+                      className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all duration-200 inline-flex items-center space-x-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Create Your First Form</span>
+                    </Link>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-10">
-                <p className="text-gray-500 mb-4">You haven't created any forms yet</p>
-                <Link
-                  href="/dashboard/forms/new"
-                  className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm btn"
-                >
-                  + Create Your First Form
-                </Link>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Templates Section */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Your Templates</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden transition-colors duration-200">
+            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Your Templates</h2>
               <Link 
                 href="/dashboard/templates/new" 
-                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm btn"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 flex items-center space-x-2 text-sm"
               >
-                + New Template
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>New Template</span>
               </Link>
             </div>
-            {templates.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {templates.map((template) => (
-                  <div key={template.id} className="border rounded-lg p-4 hover:shadow-md transition relative">
-                    <button
-                      onClick={() => handleDeleteTemplate(template.id)}
-                      className="absolute top-2 right-2 p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-full transition-colors"
-                      disabled={isDeleting !== null}
-                      title="Delete template"
-                    >
-                      {isDeleting?.id === template.id && isDeleting?.type === 'template' ? (
-                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></span>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                    </button>
-                    <h3 className="text-lg font-medium">{template.name}</h3>
-                    <p className="text-gray-500 text-sm mb-3">
-                      {template.description || 'No description'}
-                    </p>
-                    
-                    {/* Template content preview */}
-                    {template.template_content && (
-                      <div className="mb-3 p-2 bg-gray-50 rounded border text-xs font-mono overflow-hidden text-gray-600" style={{ maxHeight: '80px' }}>
-                        <div className="line-clamp-3 whitespace-pre-wrap">
-                          {template.template_content}
+            <div className="p-6">
+              {templates.length > 0 ? (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {templates.map((template) => (
+                    <div key={template.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 relative group">
+                      <div className="p-5">
+                        <button
+                          onClick={() => handleDeleteTemplate(template.id)}
+                          className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                          disabled={isDeleting !== null}
+                          title="Delete template"
+                        >
+                          {isDeleting?.id === template.id && isDeleting?.type === 'template' ? (
+                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></span>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          )}
+                        </button>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{template.name}</h3>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mb-4 line-clamp-2">
+                          {template.description || 'No description'}
+                        </p>
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {template.hasAssociatedForm ? (
+                            <span className="inline-block px-2.5 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                              Linked to Form
+                            </span>
+                          ) : (
+                            <span className="inline-block px-2.5 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                              Not Linked
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          <Link
+                            href={`/dashboard/templates/${template.id}`}
+                            className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors flex items-center gap-1.5"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            View
+                          </Link>
+                          <Link
+                            href={`/dashboard/templates/${template.id}/edit`}
+                            className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors flex items-center gap-1.5"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            Edit
+                          </Link>
+                          {!template.hasAssociatedForm && (
+                            <Link
+                              href={`/dashboard/forms/new?template=${template.id}`}
+                              className="px-3 py-1.5 text-xs font-medium bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-200 rounded-lg transition-colors flex items-center gap-1.5"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              Create Form
+                            </Link>
+                          )}
                         </div>
                       </div>
-                    )}
-                    
-                    <div className="flex justify-between items-center">
-                      <div>
-                        {template.hasAssociatedForm ? (
-                          <span className="inline-block px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
-                            Has Form
-                          </span>
-                        ) : (
-                          <span className="inline-block px-2 py-1 text-xs rounded bg-gray-100 text-gray-800">
-                            Available
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <Link
-                          href={`/dashboard/templates/${template.id}`}
-                          className="p-1 text-gray-600 hover:text-gray-800 link-hover"
-                        >
-                          View
-                        </Link>
-                        <Link
-                          href={`/dashboard/templates/${template.id}/edit`}
-                          className="p-1 ml-2 text-blue-600 hover:text-blue-800 link-hover"
-                        >
-                          Edit
-                        </Link>
-                      </div>
                     </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 px-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">No templates yet</h3>
+                  <p className="mt-2 text-gray-500 dark:text-gray-400 max-w-md mx-auto">Create templates to generate documents from form responses.</p>
+                  <div className="mt-6">
+                    <Link
+                      href="/dashboard/templates/new"
+                      className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200 inline-flex items-center space-x-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Create Your First Template</span>
+                    </Link>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-10">
-                <p className="text-gray-500 mb-4">You haven't created any templates yet</p>
-                <Link
-                  href="/dashboard/templates/new"
-                  className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm btn"
-                >
-                  + Create Your First Template
-                </Link>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
         </>
       )}

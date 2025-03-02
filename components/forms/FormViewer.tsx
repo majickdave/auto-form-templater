@@ -184,18 +184,22 @@ export default function FormViewer({ formId, isOwner = false }: { formId: string
           >
             {form.public ? 'Public' : 'Private'}
           </button>
-          <Link 
-            href={`/dashboard/forms/${formId}/edit`}
-            className="px-3 py-1.5 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm font-medium"
-          >
-            Edit Form
-          </Link>
-          <Link 
-            href={`/dashboard/forms/${formId}/responses`}
-            className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
-          >
-            View Responses ({responseCount})
-          </Link>
+          {isOwner && (
+            <div className="flex space-x-3 mt-4">
+              <Link
+                href={`/dashboard/forms/${formId}`}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              >
+                Edit Form
+              </Link>
+              <Link
+                href={`/dashboard/forms/${formId}/responses`}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+              >
+                View Responses
+              </Link>
+            </div>
+          )}
           <button
             onClick={deleteForm}
             className="px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium"

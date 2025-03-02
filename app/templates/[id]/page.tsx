@@ -184,7 +184,7 @@ export default function TemplatePage() {
           description: formData.description,
           fields: formData.fields,
           field_labels: formData.fields.map((field: any) => field.label),
-          public: false,
+          public: true,
           template_id: formData.templateId || null,
         })
         .select();
@@ -194,8 +194,8 @@ export default function TemplatePage() {
       toast.dismiss();
       toast.success(`Form "${template.title}" created successfully!`);
       
-      // Navigate immediately to the form editor page with the newly created form
-      router.push(`/dashboard/forms/${data[0].id}/edit`);
+      // Redirect to the form edit page
+      router.push(`/dashboard/forms/${data[0].id}`);
       
     } catch (err: any) {
       toast.dismiss();

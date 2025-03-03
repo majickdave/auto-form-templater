@@ -23,7 +23,23 @@ type Form = {
   public: boolean;
   created_at: string;
   template_id?: string | null;
+  fields_metadata?: {
+    labels: string[];
+    types: string[];
+    default_values: (string | string[] | null)[];
+    required: boolean[];
+    options: (string[] | null)[];
+    placeholders: (string | null)[];
+  };
 };
+
+interface FormResponse {
+  id: string;
+  form_id: string;
+  data: Record<string, any>;
+  submitted_at: string;
+  respondent_email?: string;
+}
 
 export default function Dashboard() {
   const [templates, setTemplates] = useState<Template[]>([]);

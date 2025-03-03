@@ -10,7 +10,6 @@ interface Template {
   name: string;
   description?: string;
   template_content: string;
-  field_labels?: Record<string, string>;
   fields?: Array<{
     id: string;
     label: string;
@@ -55,8 +54,18 @@ export function renderTemplate(template: Template, formResponse: FormResponse): 
     return fields;
   };
 
-  // Get the field labels from the template content
-  const fieldLabels = template.field_labels || extractFieldLabels(template.template_content);
+  // Get the field labels from the template fields or extract from content
+  const fieldLabels: Record<string, string> = {};
+  
+  if (template.fields && template.fields.length > 0) {
+    // Create a mapping from field IDs to their labels
+    template.fields.forEach(field => {
+      fieldLabels[field.id] = field.label;
+    });
+  } else {
+    // Extract field labels from template content if fields are not provided
+    Object.assign(fieldLabels, extractFieldLabels(template.template_content));
+  }
   
   // Create a mapping from field IDs to their values in the form response
   const fieldValues: Record<string, any> = {};

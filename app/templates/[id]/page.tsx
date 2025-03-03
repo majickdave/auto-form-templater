@@ -183,7 +183,6 @@ export default function TemplatePage() {
           title: formData.title,
           description: formData.description,
           fields: formData.fields,
-          field_labels: formData.fields.map((field: any) => field.label),
           public: true,
           template_id: formData.templateId || null,
         })

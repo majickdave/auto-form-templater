@@ -23,7 +23,15 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
       placeholder,
       required,
       options: (field.type === 'select' || field.type === 'radio' || field.type === 'checkbox') ? options : undefined,
-      defaultValue: defaultValue || undefined
+      defaultValue: defaultValue || undefined,
+      metadata: {
+        label,
+        type: field.type,
+        default_value: defaultValue || null,
+        required,
+        options: (field.type === 'select' || field.type === 'radio' || field.type === 'checkbox') ? options : null,
+        placeholder: placeholder || null
+      }
     };
     
     onSave(updatedField);

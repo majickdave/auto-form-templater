@@ -188,7 +188,6 @@ async function preloadTemplates() {
           title: template.title,
           description: template.description,
           fields: formattedFields,
-          field_labels: formattedFields.map(field => field.label),
           public: true, // Make templates public by default
           template_id: template.id,
           is_template: true, // Mark as a template

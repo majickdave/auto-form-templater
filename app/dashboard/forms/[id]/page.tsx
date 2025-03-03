@@ -28,6 +28,14 @@ interface FormData {
   created_at: string;
   user_id: string;
   template_id?: string;
+  fields_metadata?: {
+    labels: string[];
+    types: string[];
+    default_values: (string | string[] | null)[];
+    required: boolean[];
+    options: (string[] | null)[];
+    placeholders: (string | null)[];
+  };
 }
 
 interface Template {
@@ -169,8 +177,17 @@ export default function FormPage() {
             user_id: user.id,
             title: formData.title,
             description: formData.description,
-            fields: formData.fields,
-            field_labels: formData.fields.map((field: any) => field.label),
+            fields: formData.fields.map((field: any) => ({
+              ...field,
+              metadata: {
+                label: field.label,
+                type: field.type,
+                default_value: field.defaultValue || null,
+                required: field.required,
+                options: field.options || null,
+                placeholder: field.placeholder || null
+              }
+            })),
             public: formData.isPublic,
             template_id: formData.template_id || (initialFormData?.templateId || selectedTemplateId || null),
           })
@@ -187,16 +204,25 @@ export default function FormPage() {
           .update({
             title: formData.title,
             description: formData.description,
-            fields: formData.fields,
-            field_labels: formData.fields.map((field: any) => field.label),
+            fields: formData.fields.map((field: any) => ({
+              ...field,
+              metadata: {
+                label: field.label,
+                type: field.type,
+                default_value: field.defaultValue || null,
+                required: field.required,
+                options: field.options || null,
+                placeholder: field.placeholder || null
+              }
+            })),
             public: formData.isPublic,
           })
           .eq('id', formId);
 
         if (error) throw error;
         
-        // Redirect to the form page
-        router.push(`/dashboard/forms/${formId}`);
+        // Redirect to the dashboard instead of the form page
+        router.push('/dashboard');
       }
       
     } catch (err: any) {

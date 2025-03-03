@@ -12,7 +12,7 @@ interface FormResponse {
   form_id: string;
   respondent_email: string | null;
   data: Record<string, any>;
-  created_at?: string;
+  submitted_at: string;
 }
 
 interface FormData {
@@ -181,7 +181,7 @@ export default function ResponseDetailPage() {
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-lg font-medium text-gray-900 dark:text-white">Response Information</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Submitted on {formatDate(response.created_at || '')}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Submitted on {formatDate(response.submitted_at)}</p>
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
               {response.respondent_email ? (
@@ -209,9 +209,13 @@ export default function ResponseDetailPage() {
 
       {/* Rendered Template Section */}
       {form.template_id && (
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Template with Response Data</h2>
-          <TemplateRenderer templateId={form.template_id} formResponse={response} />
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mt-6">
+          <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Rendered Template</h2>
+          </div>
+          <div className="p-6">
+            <TemplateRenderer templateId={form.template_id} formResponse={response} />
+          </div>
         </div>
       )}
     </div>

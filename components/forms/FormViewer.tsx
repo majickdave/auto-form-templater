@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
-interface Field {
+interface FormField {
   id: string;
   type: string;
   label: string;
@@ -13,26 +13,49 @@ interface Field {
   required: boolean;
   options?: string[];
   defaultValue?: string | string[];
+  metadata?: {
+    label: string;
+    type: string;
+    default_value: string | string[] | null;
+    required: boolean;
+    options: string[] | null;
+    placeholder: string | null;
+  };
 }
 
 interface FormData {
   id: string;
   title: string;
   description: string;
-  fields: Field[];
+  fields: FormField[];
   public: boolean;
   created_at: string;
   user_id: string;
+  fields_metadata?: {
+    labels: string[];
+    types: string[];
+    default_values: (string | string[] | null)[];
+    required: boolean[];
+    options: (string[] | null)[];
+    placeholders: (string | null)[];
+  };
 }
 
 export default function FormViewer({ formId, isOwner = false }: { formId: string; isOwner?: boolean }) {
   const router = useRouter();
   const [form, setForm] = useState<FormData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [responseCount, setResponseCount] = useState(0);
+  const [isPublicToggling, setIsPublicToggling] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [formValues, setFormValues] = useState<Record<string, any>>({});
+  const [userEmail, setUserEmail] = useState('');
 
   useEffect(() => {
     // Generate share URL
@@ -133,6 +156,47 @@ export default function FormViewer({ formId, isOwner = false }: { formId: string
     } catch (err: any) {
       console.error('Error deleting form:', err);
       alert('Failed to delete form');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    setSubmitError(null);
+    
+    try {
+      // Validate required fields
+      const requiredFields = form?.fields.filter(field => field.required) || [];
+      for (const field of requiredFields) {
+        if (!formValues[field.id] && formValues[field.id] !== 0) {
+          throw new Error(`${field.label} is required`);
+        }
+      }
+      
+      // Submit form response
+      const { error } = await supabase
+        .from('form_responses')
+        .insert([
+          {
+            form_id: formId,
+            data: formValues,
+            respondent_email: userEmail,
+            submitted_at: new Date().toISOString()
+          }
+        ]);
+      
+      if (error) throw error;
+      
+      setIsSubmitted(true);
+      setFormValues({});
+    } catch (error: any) {
+      console.error('Error submitting form:', error);
+      setSubmitError(error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

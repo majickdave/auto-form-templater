@@ -63,11 +63,16 @@ export default function PublicFormPage() {
         }
         
         const initialData: Record<string, any> = {};
+        
+        // Use metadata inside each field if available, otherwise fall back to field properties
         data.fields.forEach((field: any) => {
-          if (field.defaultValue) {
+          if (field.metadata && field.metadata.default_value !== null && field.metadata.default_value !== undefined) {
+            initialData[field.id] = field.metadata.default_value;
+          } else if (field.defaultValue) {
             initialData[field.id] = field.defaultValue;
           }
         });
+        
         setFormData(initialData);
         
       } catch (err: any) {
@@ -143,6 +148,7 @@ export default function PublicFormPage() {
           form_id: form.id,
           respondent_email: email,
           data: labeledData,
+          submitted_at: new Date().toISOString()
         });
 
       if (error) throw error;

@@ -14,13 +14,15 @@ interface FormField {
   label: string;
   required: boolean;
   options?: string[];
+  placeholder?: string;
+  defaultValue?: string | string[];
 }
 
 interface FormResponse {
   id: string;
   form_id: string;
   data: Record<string, any>;
-  created_at: string;
+  submitted_at: string;
   respondent_email?: string;
 }
 
@@ -29,8 +31,17 @@ interface Form {
   title: string;
   description: string;
   fields: FormField[];
-  template_id?: string;
+  public: boolean;
+  created_at: string;
   user_id: string;
+  fields_metadata?: {
+    labels: string[];
+    types: string[];
+    default_values: (string | string[] | null)[];
+    required: boolean[];
+    options: (string[] | null)[];
+    placeholders: (string | null)[];
+  };
 }
 
 interface Template {
@@ -110,7 +121,7 @@ export default function FormResponsesPage() {
           .from('form_responses')
           .select('*')
           .eq('form_id', formId)
-          .order('created_at', { ascending: false });
+          .order('submitted_at', { ascending: false });
         
         if (responseError) throw responseError;
         
@@ -308,7 +319,7 @@ export default function FormResponsesPage() {
                           {response.respondent_email || 'Anonymous'}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {formatDate(response.created_at)}
+                          {formatDate(response.submitted_at)}
                         </div>
                       </div>
                     ))}
@@ -323,7 +334,7 @@ export default function FormResponsesPage() {
                     <div className="flex justify-between items-center mb-4">
                       <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Response Details</h2>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {formatDate(selectedResponse.created_at)}
+                        {formatDate(selectedResponse.submitted_at)}
                       </div>
                     </div>
                     
@@ -367,7 +378,7 @@ export default function FormResponsesPage() {
                             {response.respondent_email || 'Anonymous'}
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {formatDate(response.created_at)}
+                            {formatDate(response.submitted_at)}
                           </div>
                         </div>
                       </div>

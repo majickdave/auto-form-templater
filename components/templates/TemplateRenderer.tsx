@@ -9,7 +9,6 @@ interface Template {
   name: string;
   description?: string;
   template_content: string;
-  field_labels?: Record<string, string>;
   fields?: Array<{
     id: string;
     label: string;

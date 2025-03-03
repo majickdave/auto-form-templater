@@ -10,6 +10,14 @@ interface Form {
   description: string;
   user_id: string;
   fields: any[];
+  fields_metadata?: {
+    labels: string[];
+    types: string[];
+    default_values: (string | string[] | null)[];
+    required: boolean[];
+    options: (string[] | null)[];
+    placeholders: (string | null)[];
+  };
 }
 
 interface FormSelectorProps {

@@ -39,7 +39,7 @@ interface FormResponse {
   id: string;
   form_id: string;
   data: Record<string, any>;
-  created_at: string;
+  submitted_at: string;
   respondent_email?: string;
 }
 
@@ -112,7 +112,7 @@ export default function TemplateViewPage() {
               .from('form_responses')
               .select('*')
               .eq('form_id', formData.id)
-              .order('created_at', { ascending: false })
+              .order('submitted_at', { ascending: false })
               .limit(5);
             
             if (!responseError && responseData) {
@@ -135,7 +135,7 @@ export default function TemplateViewPage() {
               .from('form_responses')
               .select('*')
               .eq('form_id', formData[0].id)
-              .order('created_at', { ascending: false })
+              .order('submitted_at', { ascending: false })
               .limit(5);
             
             if (!responseError && responseData) {
@@ -206,7 +206,6 @@ export default function TemplateViewPage() {
           title: template.name,
           description: template.description || '',
           fields: template.fields || [],
-          field_labels: (template.fields || []).map((field: any) => field.label),
           public: true,
           template_id: template.id
         })
@@ -245,7 +244,7 @@ export default function TemplateViewPage() {
       .map(response => ({
         id: response.id,
         value: formatResponseValue(response.data[fieldName]),
-        date: new Date(response.created_at).toLocaleDateString()
+        date: new Date(response.submitted_at).toLocaleDateString()
       }))
       .slice(0, 3); // Limit to 3 examples
   };
@@ -476,7 +475,7 @@ export default function TemplateViewPage() {
                     {responses.map((response) => (
                       <tr key={response.id}>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(response.created_at).toLocaleDateString()}
+                          {new Date(response.submitted_at).toLocaleDateString()}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                           {response.respondent_email || 'Anonymous'}

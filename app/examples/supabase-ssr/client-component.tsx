@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { Session } from '@supabase/supabase-js';
 
 export default function ClientComponentExample() {

@@ -70,16 +70,24 @@ export default function ResponseDetailPage() {
 
         setForm(formData);
 
-        // Fetch specific response
+        // Fetch specific response with explicit columns to ensure we get all data
         const { data: responseData, error: responseError } = await supabase
           .from('form_responses')
-          .select('*')
+          .select('id, form_id, respondent_email, data, submitted_at')
           .eq('id', responseId)
           .eq('form_id', formId)
           .single();
 
-        if (responseError) throw responseError;
+        if (responseError) {
+          console.error('Error fetching response:', responseError);
+          throw new Error('Failed to load response data');
+        }
         
+        if (!responseData) {
+          throw new Error('Response not found');
+        }
+        
+        console.log('Fetched response data:', responseData);
         setResponse(responseData);
       } catch (err: any) {
         console.error('Error fetching data:', err);
@@ -195,14 +203,25 @@ export default function ResponseDetailPage() {
         
         <div className="p-6">
           <dl className="divide-y divide-gray-200 dark:divide-gray-700">
-            {form.fields.map((field) => (
-              <div key={field.id} className="py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">{field.label}</dt>
-                <dd className="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">
-                  {renderResponseValue(response.data[field.id], field.type)}
-                </dd>
-              </div>
-            ))}
+            {form.fields.map((field) => {
+              // Check if the field exists in the response data
+              const hasValue = response.data && field.id in response.data;
+              
+              return (
+                <div key={field.id} className="py-4 sm:grid sm:grid-cols-3 sm:gap-4">
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {field.label}
+                    {field.type && <span className="ml-2 text-xs text-gray-400">({field.type})</span>}
+                  </dt>
+                  <dd className="mt-1 text-sm text-gray-900 dark:text-white sm:mt-0 sm:col-span-2">
+                    {hasValue 
+                      ? renderResponseValue(response.data[field.id], field.type)
+                      : <span className="text-gray-400 dark:text-gray-500">No response</span>
+                    }
+                  </dd>
+                </div>
+              );
+            })}
           </dl>
         </div>
       </div>
@@ -227,16 +246,6 @@ function renderResponseValue(value: any, fieldType: string) {
     return <span className="text-gray-400 dark:text-gray-500">No response</span>;
   }
   
-  if (Array.isArray(value)) {
-    return (
-      <ul className="list-disc pl-5">
-        {value.map((item, index) => (
-          <li key={index}>{item}</li>
-        ))}
-      </ul>
-    );
-  }
-  
   if (fieldType === 'checkbox') {
     if (Array.isArray(value)) {
       return (
@@ -247,8 +256,33 @@ function renderResponseValue(value: any, fieldType: string) {
         </ul>
       );
     }
-    return value;
+    // Handle case where checkbox value is not an array but should be
+    return String(value);
   }
   
-  return value.toString();
+  if (fieldType === 'select' || fieldType === 'radio') {
+    return String(value);
+  }
+  
+  if (fieldType === 'date') {
+    try {
+      const date = new Date(value);
+      return date.toLocaleDateString();
+    } catch (e) {
+      return String(value);
+    }
+  }
+  
+  if (Array.isArray(value)) {
+    return (
+      <ul className="list-disc pl-5">
+        {value.map((item, index) => (
+          <li key={index}>{String(item)}</li>
+        ))}
+      </ul>
+    );
+  }
+  
+  // Default case for text, textarea, number, email, etc.
+  return String(value);
 } 

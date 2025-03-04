@@ -18,7 +18,7 @@ export default function RootPage() {
           // If logged in, redirect to dashboard
           router.replace('/dashboard');
         } else {
-          // If not logged in, redirect to home page content
+          // If not logged in, redirect to the new home page
           router.replace('/home');
         }
       } catch (error) {

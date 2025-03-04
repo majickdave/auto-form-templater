@@ -56,6 +56,9 @@ export default function TemplateRenderer({ templateId, formResponse }: TemplateR
         
         setTemplate(data);
         
+        // Log the form response data to help with debugging
+        console.log('Form response data for template rendering:', formResponse);
+        
         // Render the template with the form response data
         const rendered = renderTemplate(data, formResponse);
         setRenderedContent(rendered);
@@ -69,6 +72,12 @@ export default function TemplateRenderer({ templateId, formResponse }: TemplateR
     
     if (templateId && formResponse) {
       fetchTemplate();
+    } else {
+      if (!templateId) {
+        setError('No template ID provided');
+      } else if (!formResponse) {
+        setError('No form response data provided');
+      }
     }
   }, [templateId, formResponse]);
 

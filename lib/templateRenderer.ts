@@ -38,6 +38,9 @@ export function renderTemplate(template: Template, formResponse: FormResponse): 
     return '';
   }
 
+  // Log the form response data to help with debugging
+  console.log('Rendering template with form response data:', formResponse);
+
   // Extract field labels from template content
   const extractFieldLabels = (content: string) => {
     const regex = /{{([^}]+)}}/g;
@@ -71,10 +74,12 @@ export function renderTemplate(template: Template, formResponse: FormResponse): 
   const fieldValues: Record<string, any> = {};
   
   // Map field IDs to their values in the form response
-  if (formResponse.data) {
+  if (formResponse && formResponse.data) {
     Object.entries(formResponse.data).forEach(([fieldId, value]) => {
       fieldValues[fieldId] = value;
     });
+  } else {
+    console.warn('Form response data is missing or invalid:', formResponse);
   }
   
   // Replace placeholders in the template content with form response values

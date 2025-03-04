@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface FieldEditorProps {
   field: any;
@@ -14,6 +14,10 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
   const [required, setRequired] = useState(field.required || false);
   const [options, setOptions] = useState<string[]>(field.options || []);
   const [defaultValue, setDefaultValue] = useState(field.defaultValue || '');
+  const [selectedOptions, setSelectedOptions] = useState<string[]>(
+    Array.isArray(field.defaultValue) ? field.defaultValue : 
+    field.defaultValue ? [field.defaultValue] : []
+  );
   
   // Handle save
   const handleSave = () => {
@@ -23,11 +27,19 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
       placeholder,
       required,
       options: (field.type === 'select' || field.type === 'radio' || field.type === 'checkbox') ? options : undefined,
-      defaultValue: defaultValue || undefined,
+      defaultValue: field.type === 'checkbox' 
+        ? selectedOptions 
+        : field.type === 'radio' || field.type === 'select'
+          ? selectedOptions[0] || ''
+          : defaultValue || undefined,
       metadata: {
         label,
         type: field.type,
-        default_value: defaultValue || null,
+        default_value: field.type === 'checkbox' 
+          ? selectedOptions 
+          : field.type === 'radio' || field.type === 'select'
+            ? selectedOptions[0] || null
+            : defaultValue || null,
         required,
         options: (field.type === 'select' || field.type === 'radio' || field.type === 'checkbox') ? options : null,
         placeholder: placeholder || null
@@ -47,11 +59,54 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
     const newOptions = [...options];
     newOptions[index] = value;
     setOptions(newOptions);
+    
+    // Update selectedOptions if the option text changes
+    if (selectedOptions.includes(options[index])) {
+      const newSelectedOptions = [...selectedOptions];
+      const selectedIndex = newSelectedOptions.indexOf(options[index]);
+      newSelectedOptions[selectedIndex] = value;
+      setSelectedOptions(newSelectedOptions);
+    }
   };
   
   // Remove an option
   const removeOption = (index: number) => {
+    const optionToRemove = options[index];
     setOptions(options.filter((_, i) => i !== index));
+    
+    // Remove from selectedOptions if it was selected
+    if (selectedOptions.includes(optionToRemove)) {
+      setSelectedOptions(selectedOptions.filter(opt => opt !== optionToRemove));
+    }
+  };
+  
+  // Toggle option selection for checkbox
+  const toggleOptionSelection = (option: string) => {
+    if (field.type === 'checkbox') {
+      if (selectedOptions.includes(option)) {
+        setSelectedOptions(selectedOptions.filter(opt => opt !== option));
+      } else {
+        setSelectedOptions([...selectedOptions, option]);
+      }
+    } else if (field.type === 'radio' || field.type === 'select') {
+      setSelectedOptions([option]);
+    }
+  };
+  
+  // Move option up in the list
+  const moveOptionUp = (index: number) => {
+    if (index === 0) return;
+    const newOptions = [...options];
+    [newOptions[index - 1], newOptions[index]] = [newOptions[index], newOptions[index - 1]];
+    setOptions(newOptions);
+  };
+  
+  // Move option down in the list
+  const moveOptionDown = (index: number) => {
+    if (index === options.length - 1) return;
+    const newOptions = [...options];
+    [newOptions[index], newOptions[index + 1]] = [newOptions[index + 1], newOptions[index]];
+    setOptions(newOptions);
   };
   
   return (
@@ -97,15 +152,93 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
             <button
               type="button"
               onClick={addOption}
-              className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md text-gray-700 dark:text-gray-300 transition-colors"
+              className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800/40 text-blue-700 dark:text-blue-300 rounded-md transition-colors flex items-center"
             >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
               Add Option
             </button>
           </div>
           
-          <div className="space-y-2">
+          {/* Options Preview */}
+          <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg">
+            <h4 className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2 font-semibold">Preview</h4>
+            <div className="space-y-2">
+              {options.map((option, index) => (
+                <div key={`preview-${index}`} className="flex items-center">
+                  {field.type === 'checkbox' ? (
+                    <input
+                      type="checkbox"
+                      checked={selectedOptions.includes(option)}
+                      onChange={() => toggleOptionSelection(option)}
+                      className="h-4 w-4 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400 border-gray-300 dark:border-gray-600 rounded transition-colors"
+                    />
+                  ) : field.type === 'radio' ? (
+                    <input
+                      type="radio"
+                      checked={selectedOptions.includes(option)}
+                      onChange={() => toggleOptionSelection(option)}
+                      name="option-preview"
+                      className="h-4 w-4 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400 border-gray-300 dark:border-gray-600 transition-colors"
+                    />
+                  ) : (
+                    <span className="text-xs text-gray-500 dark:text-gray-400 w-4">
+                      {index + 1}.
+                    </span>
+                  )}
+                  <label className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                    {option}
+                  </label>
+                </div>
+              ))}
+            </div>
+            {field.type === 'checkbox' && (
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Check options to set as default selected
+              </p>
+            )}
+            {field.type === 'radio' && (
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                Select an option to set as default
+              </p>
+            )}
+          </div>
+          
+          {/* Options Editor */}
+          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
             {options.map((option, index) => (
-              <div key={index} className="flex items-center">
+              <div key={index} className="flex items-center gap-2">
+                <div className="flex-shrink-0 flex flex-col space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => moveOptionUp(index)}
+                    disabled={index === 0}
+                    className={`p-1 rounded ${
+                      index === 0 
+                        ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' 
+                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveOptionDown(index)}
+                    disabled={index === options.length - 1}
+                    className={`p-1 rounded ${
+                      index === options.length - 1 
+                        ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' 
+                        : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={option}
@@ -115,7 +248,7 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
                 <button
                   type="button"
                   onClick={() => removeOption(index)}
-                  className="ml-2 p-1.5 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                  className="p-1.5 text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
                   disabled={options.length <= 1}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

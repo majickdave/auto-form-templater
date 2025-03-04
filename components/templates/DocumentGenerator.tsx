@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
+import { supabase } from '@/lib/supabase';
 
 interface DocumentGeneratorProps {
   templateContent: string;
   formResponses: Record<string, any>;
   templateName: string;
+  responseId?: string; // Optional ID of the form response for saving changes
 }
 
 // Interface for tracking replaced content
@@ -14,19 +16,33 @@ interface ReplacedContent {
   text: string;
   isReplaced: boolean;
   originalPlaceholder?: string;
+  key?: string; // The key in formResponses that this value came from
 }
 
 export default function DocumentGenerator({ 
   templateContent, 
   formResponses, 
-  templateName 
+  templateName,
+  responseId
 }: DocumentGeneratorProps) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [editedResponses, setEditedResponses] = useState<Record<string, any>>({});
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Initialize editedResponses with the original formResponses
+  useEffect(() => {
+    setEditedResponses({...formResponses});
+  }, [formResponses]);
 
   // Function to replace template placeholders with form response values
   const generateContent = (forPreview = false): string | ReplacedContent[] => {
     if (!templateContent) return forPreview ? [] : '';
+    
+    // Always use editedResponses to include any user edits to unfilled variables
+    const responsesToUse = editedResponses;
     
     let content = templateContent;
     const placeholderRegex = /{{([^}]+)}}/g;
@@ -42,7 +58,7 @@ export default function DocumentGenerator({
     // For preview mode, we'll track replaced content differently
     if (forPreview) {
       // Create a map of replacements with their positions
-      const replacements: { placeholder: string; start: number; end: number; value: string; found: boolean }[] = [];
+      const replacements: { placeholder: string; start: number; end: number; value: string; found: boolean; key?: string }[] = [];
       
       // Find all placeholder positions
       placeholders.forEach(placeholder => {
@@ -69,10 +85,10 @@ export default function DocumentGenerator({
       for (const replacement of replacements) {
         const { placeholder } = replacement;
         
-        // Try to find the value in formResponses
+        // Try to find the value in responsesToUse
         // First check if the exact placeholder exists as a key
-        if (formResponses[placeholder] !== undefined) {
-          let value = formResponses[placeholder];
+        if (responsesToUse[placeholder] !== undefined) {
+          let value = responsesToUse[placeholder];
           
           if (Array.isArray(value)) {
             replacement.value = value.join(', ');
@@ -81,13 +97,14 @@ export default function DocumentGenerator({
           }
           
           replacement.found = true;
+          replacement.key = placeholder;
         } 
         // If not found, check if there's a case-insensitive match or a match with spaces replaced by underscores
         else {
           const normalizedPlaceholder = placeholder.toLowerCase().replace(/\s+/g, '_');
           
-          // Check all keys in formResponses for a match
-          Object.entries(formResponses).forEach(([key, value]) => {
+          // Check all keys in responsesToUse for a match
+          Object.entries(responsesToUse).forEach(([key, value]) => {
             const normalizedKey = key.toLowerCase().replace(/\s+/g, '_');
             
             if (normalizedKey === normalizedPlaceholder || key === placeholder) {
@@ -98,10 +115,13 @@ export default function DocumentGenerator({
               }
               
               replacement.found = true;
+              replacement.key = key;
             }
           });
           
+          // If still not found, set the key to the placeholder name so it can be edited
           if (!replacement.found) {
+            replacement.key = placeholder;
             unresolvedPlaceholders.push(placeholder);
           }
         }
@@ -125,12 +145,16 @@ export default function DocumentGenerator({
           result.push({
             text: replacement.value,
             isReplaced: true,
-            originalPlaceholder: replacement.placeholder
+            originalPlaceholder: replacement.placeholder,
+            key: replacement.key
           });
         } else {
+          // For unfilled placeholders, make them editable too
           result.push({
-            text: content.substring(replacement.start, replacement.end),
-            isReplaced: false
+            text: '', // Empty string to allow user to fill in
+            isReplaced: true,
+            originalPlaceholder: replacement.placeholder,
+            key: replacement.key
           });
         }
         
@@ -167,10 +191,10 @@ export default function DocumentGenerator({
       placeholders.forEach(placeholder => {
         const placeholderPattern = `{{${placeholder}}}`;
         
-        // Try to find the value in formResponses
+        // Try to find the value in responsesToUse
         // First check if the exact placeholder exists as a key
-        if (formResponses[placeholder] !== undefined) {
-          let value = formResponses[placeholder];
+        if (responsesToUse[placeholder] !== undefined) {
+          let value = responsesToUse[placeholder];
           let replacementValue = '';
           
           if (Array.isArray(value)) {
@@ -186,8 +210,8 @@ export default function DocumentGenerator({
           const normalizedPlaceholder = placeholder.toLowerCase().replace(/\s+/g, '_');
           let found = false;
           
-          // Check all keys in formResponses for a match
-          Object.entries(formResponses).forEach(([key, value]) => {
+          // Check all keys in responsesToUse for a match
+          Object.entries(responsesToUse).forEach(([key, value]) => {
             const normalizedKey = key.toLowerCase().replace(/\s+/g, '_');
             
             if (normalizedKey === normalizedPlaceholder || key === placeholder) {
@@ -277,19 +301,94 @@ export default function DocumentGenerator({
     }
   };
 
-  // Render the preview content with highlighting
+  // Handle input change for editable fields
+  const handleInputChange = (key: string | undefined, value: string) => {
+    if (!key) return;
+    
+    // Update the editedResponses with the new value
+    setEditedResponses(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  // Save changes to the form response
+  const saveChanges = async () => {
+    setIsSaving(true);
+    setError('');
+    setSuccess('');
+
+    // If there's no responseId, we're just using the edited values for document generation
+    if (!responseId) {
+      setSuccess('Changes applied to preview');
+      setTimeout(() => setSuccess(''), 3000);
+      setIsSaving(false);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('form_responses')
+        .update({
+          data: editedResponses
+        })
+        .eq('id', responseId);
+
+      if (error) throw error;
+      
+      setSuccess('Changes saved successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('Error saving changes:', err);
+      setError(err.message || 'Failed to save changes');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Render the preview content with highlighting and editing
   const renderPreviewContent = () => {
     const contentSegments = generateContent(true) as ReplacedContent[];
     
-    return contentSegments.map((segment, index) => (
-      <span 
-        key={index} 
-        className={segment.isReplaced ? 'bg-yellow-200 px-1 rounded text-black' : ''}
-        title={segment.isReplaced ? `From: {{${segment.originalPlaceholder}}}` : ''}
-      >
-        {segment.text}
-      </span>
-    ));
+    return contentSegments.map((segment, index) => {
+      if (segment.isReplaced) {
+        // Determine if this is an unfilled variable
+        const isUnfilled = segment.text === '';
+        
+        if (isEditing) {
+          // Render an input field for editable segments
+          return (
+            <input
+              key={index}
+              type="text"
+              value={segment.text}
+              onChange={(e) => handleInputChange(segment.key, e.target.value)}
+              className={`${isUnfilled ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border px-1 py-0.5 rounded text-black inline-block min-w-[100px]`}
+              title={`Editing: {{${segment.originalPlaceholder}}}${isUnfilled ? ' (unfilled)' : ''}`}
+              placeholder={isUnfilled ? `Enter ${segment.originalPlaceholder}...` : ''}
+            />
+          );
+        } else {
+          // Render a span for non-editing mode
+          return (
+            <span 
+              key={index} 
+              className={`${isUnfilled ? 'bg-red-200 text-red-800' : 'bg-yellow-200'} px-1 rounded text-black`}
+              title={`From: {{${segment.originalPlaceholder}}}${isUnfilled ? ' (unfilled)' : ''}`}
+            >
+              {isUnfilled ? `{{${segment.originalPlaceholder}}}` : segment.text}
+            </span>
+          );
+        }
+      } else {
+        // Render regular text
+        return (
+          <span key={index}>
+            {segment.text}
+          </span>
+        );
+      }
+    });
   };
 
   return (
@@ -299,6 +398,12 @@ export default function DocumentGenerator({
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
           <p className="text-red-700">{error}</p>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-4">
+          <p className="text-green-700">{success}</p>
         </div>
       )}
       
@@ -322,6 +427,29 @@ export default function DocumentGenerator({
         >
           {generating ? 'Generating...' : 'Generate Text File'}
         </button>
+
+        <button
+          onClick={() => setIsEditing(!isEditing)}
+          disabled={generating || isSaving}
+          className={`px-4 py-2 rounded ${
+            isEditing ? 'bg-gray-600 text-white hover:bg-gray-700' : 'bg-purple-600 text-white hover:bg-purple-700'
+          } btn`}
+        >
+          {isEditing ? 'Cancel Editing' : 'Edit Variables'}
+        </button>
+
+        {isEditing && (
+          <button
+            onClick={saveChanges}
+            disabled={generating || isSaving}
+            className={`px-4 py-2 rounded ${
+              isSaving ? 'bg-gray-400' : 'bg-amber-600 text-white hover:bg-amber-700'
+            } btn`}
+            title={!responseId ? 'Changes will only apply to the current preview' : ''}
+          >
+            {isSaving ? 'Saving...' : responseId ? 'Save Changes' : 'Apply Changes'}
+          </button>
+        )}
       </div>
       
       <div className="mt-4 p-4 border rounded bg-gray-50">

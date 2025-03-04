@@ -64,7 +64,7 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} id={`field-${id}`} className="transition-colors duration-300">
       {children}
     </div>
   );
@@ -216,8 +216,18 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
 
   // Handle field edit
   const handleEditField = (field: any, index: number) => {
-    setEditingField({ ...field });
+    // Create a deep copy of the field to avoid reference issues
+    const fieldCopy = JSON.parse(JSON.stringify(field));
+    setEditingField(fieldCopy);
     setEditingIndex(index);
+    
+    // Scroll to the editor section
+    setTimeout(() => {
+      const editorElement = document.getElementById('field-editor-section');
+      if (editorElement) {
+        editorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   // Handle field update from editor
@@ -226,6 +236,20 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
       const newFields = [...fields];
       newFields[editingIndex] = updatedField;
       setFields(newFields);
+      
+      // Provide visual feedback
+      setActiveField(updatedField.id);
+      setTimeout(() => {
+        const fieldElement = document.getElementById(`field-${updatedField.id}`);
+        if (fieldElement) {
+          fieldElement.classList.add('bg-blue-50', 'dark:bg-blue-900/20');
+          setTimeout(() => {
+            fieldElement.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
+          }, 1000);
+        }
+      }, 100);
+      
+      // Reset editing state
       setEditingField(null);
       setEditingIndex(null);
     }
@@ -455,6 +479,12 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
               </div>
             ) : (
               <div className="mt-4">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Click once to select a field, click again or double-click to edit its properties.
+                </p>
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -467,10 +497,27 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
                     {fields.map((field, index) => (
                       <SortableItem key={field.id} id={field.id}>
                         <div 
-                          className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 ${
-                            activeField === field.id ? 'ring-2 ring-blue-500 dark:ring-blue-400' : ''
-                          }`}
-                          onClick={() => setActiveField(activeField === field.id ? null : field.id)}
+                          className={`bg-white dark:bg-gray-800 border ${
+                            editingField && editingField.id === field.id 
+                              ? 'border-blue-500 dark:border-blue-500' 
+                              : activeField === field.id 
+                                ? 'border-gray-200 dark:border-gray-700 ring-2 ring-blue-500 dark:ring-blue-400' 
+                                : 'border-gray-200 dark:border-gray-700'
+                          } rounded-lg shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-750`}
+                          onClick={(e) => {
+                            // If already active, open the editor
+                            if (activeField === field.id) {
+                              handleEditField(field, index);
+                            } else {
+                              // Otherwise just set as active
+                              setActiveField(field.id);
+                            }
+                          }}
+                          onDoubleClick={(e) => {
+                            e.preventDefault();
+                            // Double-click immediately opens the editor
+                            handleEditField(field, index);
+                          }}
                         >
                           <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700 rounded-t-lg">
                             <div className="flex items-center">
@@ -486,6 +533,11 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
                               {field.required && (
                                 <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
                                   Required
+                                </span>
+                              )}
+                              {activeField === field.id && !editingField && (
+                                <span className="ml-2 text-xs text-blue-600 dark:text-blue-400 animate-pulse">
+                                  Click again to edit
                                 </span>
                               )}
                             </div>
@@ -552,7 +604,7 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
           
           {/* Field Editor */}
           {editingField && (
-            <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+            <div id="field-editor-section" className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Edit Field</h3>
               <FieldEditor
                 field={editingField}

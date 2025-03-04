@@ -81,11 +81,23 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [focusedItemIndex, setFocusedItemIndex] = useState(-1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showEditorModal, setShowEditorModal] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuItemsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
+  
+  // Clean up auto-save timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeout.current) {
+        clearTimeout(autoSaveTimeout.current);
+      }
+    };
+  }, []);
   
   // Field types with icons and descriptions
   const fieldTypes = [
@@ -220,14 +232,7 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
     const fieldCopy = JSON.parse(JSON.stringify(field));
     setEditingField(fieldCopy);
     setEditingIndex(index);
-    
-    // Scroll to the editor section
-    setTimeout(() => {
-      const editorElement = document.getElementById('field-editor-section');
-      if (editorElement) {
-        editorElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 100);
+    setShowEditorModal(true);
   };
 
   // Handle field update from editor
@@ -252,6 +257,32 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
       // Reset editing state
       setEditingField(null);
       setEditingIndex(null);
+      setShowEditorModal(false);
+      
+      // Automatically save the form after field edit
+      const formData = {
+        title: formTitle,
+        description: formDescription,
+        public: isPublic,
+        fields: newFields, // Use the updated fields array
+        template_id
+      };
+      
+      // Show saving indicator
+      setAutoSaving(true);
+      
+      // Use a debounced save to prevent too many API calls
+      if (autoSaveTimeout.current) {
+        clearTimeout(autoSaveTimeout.current);
+      }
+      
+      autoSaveTimeout.current = setTimeout(() => {
+        onSubmit(formData);
+        // Hide saving indicator after a short delay
+        setTimeout(() => {
+          setAutoSaving(false);
+        }, 1000);
+      }, 500);
     }
   };
 
@@ -259,6 +290,7 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
   const handleEditCancel = () => {
     setEditingField(null);
     setEditingIndex(null);
+    setShowEditorModal(false);
   };
 
   // Delete a field
@@ -288,8 +320,10 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
   };
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
     
     const formData = {
       title: formTitle,
@@ -303,17 +337,55 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden transition-colors duration-200">
-      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Form Builder</h2>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Create your form by adding and configuring fields</p>
+    <div className="max-w-4xl mx-auto">
+      {/* Sticky header with save button */}
+      <div className="sticky top-0 z-20 bg-white dark:bg-gray-900 shadow-md border-b border-gray-200 dark:border-gray-700 py-3 px-4 mb-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-lg font-semibold text-gray-800 dark:text-white">
+            {initialData ? 'Edit Form' : 'Create New Form'}
+          </h1>
+          <div className="flex items-center space-x-3">
+            {autoSaving && (
+              <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Auto-saving...
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting || fields.length === 0 || !formTitle}
+              className={`px-4 py-2 rounded-lg text-white font-medium transition-all duration-200 ${
+                isSubmitting || fields.length === 0 || !formTitle
+                  ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
+                  : 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800'
+              }`}
+            >
+              {isSubmitting ? (
+                <div className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </div>
+              ) : (
+                'Save Form'
+              )}
+            </button>
+          </div>
+        </div>
       </div>
       
-      <form onSubmit={handleSubmit} className="p-6">
+      <form onSubmit={handleSubmit}>
         <div className="space-y-6">
-          {/* Form Details Section */}
-          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Form Details</h3>
+          {/* Form Title and Description */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">Form Builder</h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Create your form by adding and configuring fields</p>
             
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
@@ -365,8 +437,8 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
             </div>
           </div>
           
-          {/* Form Fields Section */}
-          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+          {/* Form Fields */}
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">Form Fields</h3>
               
@@ -602,42 +674,52 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
             )}
           </div>
           
-          {/* Field Editor */}
-          {editingField && (
-            <div id="field-editor-section" className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Edit Field</h3>
-              <FieldEditor
-                field={editingField}
-                onSave={handleFieldSave}
-                onCancel={handleEditCancel}
-              />
+          {/* Field Editor Modal */}
+          {showEditorModal && editingField && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                {/* Modal header with sticky save/cancel buttons */}
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 z-10 flex justify-between items-center">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">Edit Field</h3>
+                  <div className="flex space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editingField._currentState) {
+                          handleFieldSave(editingField._currentState);
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white rounded-lg transition-colors text-sm flex items-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Save
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={handleEditCancel}
+                      className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm flex items-center"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Modal body with scrollable content */}
+                <div className="p-6 overflow-y-auto">
+                  <FieldEditor
+                    field={editingField}
+                    onSave={handleFieldSave}
+                    onCancel={handleEditCancel}
+                  />
+                </div>
+              </div>
             </div>
           )}
-          
-          {/* Submit Button */}
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={isSubmitting || fields.length === 0 || !formTitle}
-              className={`px-6 py-2.5 rounded-lg text-white font-medium transition-all duration-200 ${
-                isSubmitting || fields.length === 0 || !formTitle
-                  ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800'
-              }`}
-            >
-              {isSubmitting ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Saving...
-                </div>
-              ) : (
-                'Save & Return to Dashboard'
-              )}
-            </button>
-          </div>
         </div>
       </form>
     </div>

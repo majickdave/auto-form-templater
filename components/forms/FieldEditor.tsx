@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 
+// Define types for our form fields
+type FieldType = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date' | 'number' | 'email';
+
 interface FieldEditorProps {
   field: any;
   onSave: (field: any) => void;
@@ -18,30 +21,56 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
     Array.isArray(field.defaultValue) ? field.defaultValue : 
     field.defaultValue ? [field.defaultValue] : []
   );
+  const [fieldType, setFieldType] = useState<FieldType>(field.type);
+  const [bulkOptions, setBulkOptions] = useState('');
+  
+  // Reset field-specific state when field type changes
+  useEffect(() => {
+    // Initialize options if switching to a field type that needs them
+    if ((fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox') && 
+        (!options.length || field.type !== fieldType)) {
+      setOptions(['Option 1', 'Option 2']);
+      setSelectedOptions([]);
+    }
+    
+    // Reset placeholder for appropriate field types
+    if (fieldType !== field.type) {
+      if (fieldType === 'select') {
+        setPlaceholder('Select an option');
+      } else if (fieldType === 'text' || fieldType === 'textarea' || fieldType === 'number' || fieldType === 'email') {
+        setPlaceholder(`Enter ${fieldType}...`);
+      }
+      
+      // Reset default value when changing field types
+      setDefaultValue('');
+      setSelectedOptions([]);
+    }
+  }, [fieldType]);
   
   // Handle save
   const handleSave = () => {
     const updatedField = {
       ...field,
+      type: fieldType,
       label,
       placeholder,
       required,
-      options: (field.type === 'select' || field.type === 'radio' || field.type === 'checkbox') ? options : undefined,
-      defaultValue: field.type === 'checkbox' 
+      options: (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox') ? options : undefined,
+      defaultValue: fieldType === 'checkbox' 
         ? selectedOptions 
-        : field.type === 'radio' || field.type === 'select'
+        : fieldType === 'radio' || fieldType === 'select'
           ? selectedOptions[0] || ''
           : defaultValue || undefined,
       metadata: {
         label,
-        type: field.type,
-        default_value: field.type === 'checkbox' 
+        type: fieldType,
+        default_value: fieldType === 'checkbox' 
           ? selectedOptions 
-          : field.type === 'radio' || field.type === 'select'
+          : fieldType === 'radio' || fieldType === 'select'
             ? selectedOptions[0] || null
             : defaultValue || null,
         required,
-        options: (field.type === 'select' || field.type === 'radio' || field.type === 'checkbox') ? options : null,
+        options: (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox') ? options : null,
         placeholder: placeholder || null
       }
     };
@@ -52,6 +81,22 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
   // Add a new option
   const addOption = () => {
     setOptions([...options, `Option ${options.length + 1}`]);
+  };
+  
+  // Add multiple options from comma-separated text
+  const addBulkOptions = () => {
+    if (!bulkOptions.trim()) return;
+    
+    // Split by commas, trim whitespace, and filter out empty strings
+    const newOptions = bulkOptions
+      .split(',')
+      .map(opt => opt.trim())
+      .filter(opt => opt.length > 0);
+    
+    if (newOptions.length > 0) {
+      setOptions([...options, ...newOptions]);
+      setBulkOptions(''); // Clear the input after adding
+    }
   };
   
   // Update an option
@@ -82,13 +127,13 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
   
   // Toggle option selection for checkbox
   const toggleOptionSelection = (option: string) => {
-    if (field.type === 'checkbox') {
+    if (fieldType === 'checkbox') {
       if (selectedOptions.includes(option)) {
         setSelectedOptions(selectedOptions.filter(opt => opt !== option));
       } else {
         setSelectedOptions([...selectedOptions, option]);
       }
-    } else if (field.type === 'radio' || field.type === 'select') {
+    } else if (fieldType === 'radio' || fieldType === 'select') {
       setSelectedOptions([option]);
     }
   };
@@ -109,8 +154,59 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
     setOptions(newOptions);
   };
   
+  // Expose handleSave to parent component
+  useEffect(() => {
+    // Update the field object in the parent component when changes are made
+    const updatedField = {
+      ...field,
+      type: fieldType,
+      label,
+      placeholder,
+      required,
+      options: (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox') ? options : undefined,
+      defaultValue: fieldType === 'checkbox' 
+        ? selectedOptions 
+        : fieldType === 'radio' || fieldType === 'select'
+          ? selectedOptions[0] || ''
+          : defaultValue || undefined,
+      metadata: {
+        label,
+        type: fieldType,
+        default_value: fieldType === 'checkbox' 
+          ? selectedOptions 
+          : fieldType === 'radio' || fieldType === 'select'
+            ? selectedOptions[0] || null
+            : defaultValue || null,
+        required,
+        options: (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox') ? options : null,
+        placeholder: placeholder || null
+      }
+    };
+    
+    // Assign the updated field to the ref passed from parent
+    field._currentState = updatedField;
+  }, [field, fieldType, label, placeholder, required, options, defaultValue, selectedOptions]);
+  
   return (
     <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Field Type</label>
+        <select
+          value={fieldType}
+          onChange={(e) => setFieldType(e.target.value as FieldType)}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors"
+        >
+          <option value="text">Text</option>
+          <option value="textarea">Text Area</option>
+          <option value="number">Number</option>
+          <option value="email">Email</option>
+          <option value="date">Date</option>
+          <option value="select">Dropdown</option>
+          <option value="radio">Radio Buttons</option>
+          <option value="checkbox">Checkboxes</option>
+        </select>
+      </div>
+      
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Field Label</label>
         <input
@@ -121,7 +217,7 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
         />
       </div>
       
-      {(field.type === 'text' || field.type === 'textarea' || field.type === 'number' || field.type === 'email') && (
+      {(fieldType === 'text' || fieldType === 'textarea' || fieldType === 'number' || fieldType === 'email') && (
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Placeholder</label>
           <input
@@ -133,11 +229,11 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
         </div>
       )}
       
-      {(field.type === 'text' || field.type === 'number' || field.type === 'email' || field.type === 'date') && (
+      {(fieldType === 'text' || fieldType === 'number' || fieldType === 'email' || fieldType === 'date') && (
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default Value</label>
           <input
-            type={field.type === 'date' ? 'date' : 'text'}
+            type={fieldType === 'date' ? 'date' : 'text'}
             value={defaultValue}
             onChange={(e) => setDefaultValue(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors"
@@ -145,7 +241,7 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
         </div>
       )}
       
-      {(field.type === 'select' || field.type === 'radio' || field.type === 'checkbox') && (
+      {(fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox') && (
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Options</label>
@@ -161,20 +257,52 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
             </button>
           </div>
           
+          {/* Bulk add options */}
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Add Multiple Options (comma-separated)
+            </label>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={bulkOptions}
+                onChange={(e) => setBulkOptions(e.target.value)}
+                placeholder="Option 1, Option 2, Option 3"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addBulkOptions();
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={addBulkOptions}
+                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white rounded-lg transition-colors text-sm"
+              >
+                Add
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Type comma-separated values and press Enter or click Add
+            </p>
+          </div>
+          
           {/* Options Preview */}
           <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700 rounded-lg">
             <h4 className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2 font-semibold">Preview</h4>
             <div className="space-y-2">
               {options.map((option, index) => (
                 <div key={`preview-${index}`} className="flex items-center">
-                  {field.type === 'checkbox' ? (
+                  {fieldType === 'checkbox' ? (
                     <input
                       type="checkbox"
                       checked={selectedOptions.includes(option)}
                       onChange={() => toggleOptionSelection(option)}
                       className="h-4 w-4 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400 border-gray-300 dark:border-gray-600 rounded transition-colors"
                     />
-                  ) : field.type === 'radio' ? (
+                  ) : fieldType === 'radio' ? (
                     <input
                       type="radio"
                       checked={selectedOptions.includes(option)}
@@ -193,12 +321,12 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
                 </div>
               ))}
             </div>
-            {field.type === 'checkbox' && (
+            {fieldType === 'checkbox' && (
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Check options to set as default selected
               </p>
             )}
-            {field.type === 'radio' && (
+            {fieldType === 'radio' && (
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Select an option to set as default
               </p>
@@ -274,23 +402,6 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
             Required field
           </label>
         </div>
-      </div>
-      
-      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white rounded-lg transition-colors"
-        >
-          Save Changes
-        </button>
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import AddFieldButton from './AddFieldButton';
+import { useRouter } from 'next/navigation';
 
 // Define types for our form fields
 type FieldType = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date' | 'number' | 'email' | 'multiselect';
@@ -40,6 +41,11 @@ interface FormField {
     options: string[] | null;
     placeholder: string | null;
   };
+}
+
+// Add interface for field order
+interface FieldOrder {
+  [key: string]: number;
 }
 
 interface FormBuilderProps {
@@ -72,6 +78,7 @@ function SortableItem({ id, children }: { id: string; children: React.ReactNode 
 }
 
 export default function FormBuilder({ onSubmit, isSubmitting, initialData, template_id }: FormBuilderProps) {
+  const router = useRouter();
   const [fields, setFields] = useState<FormField[]>(initialData?.fields || []);
   const [formTitle, setFormTitle] = useState(initialData?.title || '');
   const [formDescription, setFormDescription] = useState(initialData?.description || '');
@@ -81,6 +88,17 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showEditorModal, setShowEditorModal] = useState(false);
   const [autoSaving, setAutoSaving] = useState(false);
+  const [fieldOrder, setFieldOrder] = useState<FieldOrder>(() => {
+    // Initialize field order from initialData or create new order
+    if (initialData?.fieldOrder) {
+      return initialData.fieldOrder;
+    }
+    const order: FieldOrder = {};
+    fields.forEach((field, index) => {
+      order[field.id] = index;
+    });
+    return order;
+  });
   
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
   
@@ -107,19 +125,24 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
       type,
       label: `New ${type} field`,
       required: false,
-      placeholder: type === 'select' ? 'Select an option' : `Enter ${type}...`,
-      options: (type === 'select' || type === 'radio' || type === 'checkbox') ? ['Option 1', 'Option 2'] : undefined,
+      placeholder: type === 'select' || type === 'multiselect' ? 'Select an option' : `Enter ${type}...`,
+      options: (type === 'select' || type === 'radio' || type === 'checkbox' || type === 'multiselect') ? ['Option 1', 'Option 2'] : undefined,
       metadata: {
         label: `New ${type} field`,
         type,
         default_value: null,
         required: false,
-        options: (type === 'select' || type === 'radio' || type === 'checkbox') ? ['Option 1', 'Option 2'] : null,
-        placeholder: type === 'select' ? 'Select an option' : `Enter ${type}...`
+        options: (type === 'select' || type === 'radio' || type === 'checkbox' || type === 'multiselect') ? ['Option 1', 'Option 2'] : null,
+        placeholder: type === 'select' || type === 'multiselect' ? 'Select an option' : `Enter ${type}...`
       }
     };
     
     setFields([...fields, newField]);
+    // Add new field to order
+    setFieldOrder(prev => ({
+      ...prev,
+      [newField.id]: fields.length
+    }));
     setActiveField(newField.id);
     setEditingField(newField);
     setEditingIndex(fields.length);
@@ -163,7 +186,8 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
         title: formTitle,
         description: formDescription,
         public: isPublic,
-        fields: newFields, // Use the updated fields array
+        fields: newFields,
+        fieldOrder,
         template_id
       };
       
@@ -195,6 +219,16 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
   // Delete a field
   const deleteField = (fieldId: string) => {
     setFields(fields.filter(field => field.id !== fieldId));
+    // Remove field from order and update remaining indices
+    setFieldOrder(prev => {
+      const newOrder = { ...prev };
+      delete newOrder[fieldId];
+      // Reorder remaining fields
+      Object.keys(newOrder).forEach((id, index) => {
+        newOrder[id] = index;
+      });
+      return newOrder;
+    });
     if (activeField === fieldId) {
       setActiveField(null);
     }
@@ -213,7 +247,16 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
         const oldIndex = fields.findIndex(field => field.id === active.id);
         const newIndex = fields.findIndex(field => field.id === over.id);
         
-        return arrayMove(fields, oldIndex, newIndex);
+        const newFields = arrayMove(fields, oldIndex, newIndex);
+        
+        // Update field order
+        const newFieldOrder: FieldOrder = {};
+        newFields.forEach((field, index) => {
+          newFieldOrder[field.id] = index;
+        });
+        setFieldOrder(newFieldOrder);
+        
+        return newFields;
       });
     }
   };
@@ -229,6 +272,7 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
       description: formDescription,
       public: isPublic,
       fields,
+      fieldOrder,
       template_id
     };
     
@@ -240,9 +284,21 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
       {/* Sticky header with save button */}
       <div className="sticky top-0 z-20 bg-white dark:bg-gray-900 shadow-md border-b border-gray-200 dark:border-gray-700 py-3 px-4 mb-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-lg font-semibold text-gray-800 dark:text-white">
-            {initialData ? 'Edit Form' : 'Create New Form'}
-          </h1>
+          <div className="flex items-center space-x-4">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="flex items-center text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back
+            </button>
+            <h1 className="text-lg font-semibold text-gray-800 dark:text-white">
+              {initialData ? 'Edit Form' : 'Create New Form'}
+            </h1>
+          </div>
           <div className="flex items-center space-x-3">
             {autoSaving && (
               <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">

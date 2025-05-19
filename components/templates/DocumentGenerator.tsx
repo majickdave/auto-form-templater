@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/lib/supabase';
+import Select from 'react-select';
 
 interface DocumentGeneratorProps {
   templateContent: string;
@@ -43,11 +44,20 @@ export default function DocumentGenerator({
   const [editedResponses, setEditedResponses] = useState<Record<string, any>>({});
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTextEditing, setIsTextEditing] = useState(false);
+  const [editedText, setEditedText] = useState('');
 
   // Initialize editedResponses with the original formResponses
   useEffect(() => {
     setEditedResponses({...formResponses});
   }, [formResponses]);
+
+  // Initialize editedText when template content changes
+  useEffect(() => {
+    if (!isTextEditing) {
+      setEditedText(generateContent() as string);
+    }
+  }, [templateContent, formResponses, editedResponses]);
 
   // Function to replace template placeholders with form response values
   const generateContent = (forPreview = false): string | ReplacedContent[] => {
@@ -358,6 +368,40 @@ export default function DocumentGenerator({
     }
   };
 
+  // Save edited text to database
+  const saveEditedText = async () => {
+    setIsSaving(true);
+    setError('');
+    setSuccess('');
+
+    if (!responseId) {
+      setSuccess('Changes applied to preview');
+      setTimeout(() => setSuccess(''), 3000);
+      setIsSaving(false);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('form_responses')
+        .update({
+          edited_text: editedText
+        })
+        .eq('id', responseId);
+
+      if (error) throw error;
+      
+      setSuccess('Text saved successfully');
+      setTimeout(() => setSuccess(''), 3000);
+      setIsTextEditing(false);
+    } catch (err: any) {
+      console.error('Error saving text:', err);
+      setError(err.message || 'Failed to save text');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Function to get field type for a placeholder
   const getFieldTypeForPlaceholder = (placeholder: string): string => {
     // First try exact match
@@ -406,6 +450,29 @@ export default function DocumentGenerator({
           // Render an input field for editable segments based on field type
           switch (fieldType) {
             case 'select':
+              // Check if this is a multi-select field
+              const isMultiSelect = fieldOptions && fieldOptions.length > 0 && fieldOptions.some(opt => opt.includes('multiple'));
+              if (isMultiSelect) {
+                const currentValues = segment.text ? segment.text.split(', ') : [];
+                return (
+                  <select
+                    key={index}
+                    multiple
+                    value={currentValues}
+                    onChange={(e) => {
+                      const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                      handleInputChange(segment.key, selectedOptions.join(', '));
+                    }}
+                    className={`${isUnfilled ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border px-1 py-0.5 rounded text-black inline-block min-w-[200px]`}
+                    title={`Editing: {{${segment.originalPlaceholder}}}${isUnfilled ? ' (unfilled)' : ''}`}
+                    size={Math.min(fieldOptions?.length || 3, 5)}
+                  >
+                    {fieldOptions?.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                );
+              }
               return (
                 <select
                   key={index}
@@ -513,6 +580,65 @@ export default function DocumentGenerator({
                 />
               );
             
+            case 'multiselect':
+              const selectedValues = segment.text ? segment.text.split(', ') : [];
+              return (
+                <Select
+                  key={index}
+                  isMulti
+                  options={fieldOptions?.map(option => ({ value: option, label: option })) || []}
+                  value={fieldOptions
+                    ?.filter(option => selectedValues.includes(option))
+                    .map(option => ({ value: option, label: option })) || []}
+                  onChange={(selected) => {
+                    const values = selected ? selected.map(option => option.value) : [];
+                    handleInputChange(segment.key, values.join(', '));
+                  }}
+                  placeholder="Select options..."
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderColor: isUnfilled ? '#FCA5A5' : '#FCD34D',
+                      backgroundColor: isUnfilled ? '#FEE2E2' : '#FEF3C7',
+                      minWidth: '200px',
+                      '&:hover': {
+                        borderColor: isUnfilled ? '#EF4444' : '#F59E0B'
+                      }
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected
+                        ? '#3B82F6'
+                        : state.isFocused
+                        ? '#EFF6FF'
+                        : 'white',
+                      color: state.isSelected ? 'white' : '#1F2937',
+                      '&:hover': {
+                        backgroundColor: state.isSelected ? '#2563EB' : '#EFF6FF'
+                      }
+                    }),
+                    multiValue: (base) => ({
+                      ...base,
+                      backgroundColor: '#EFF6FF'
+                    }),
+                    multiValueLabel: (base) => ({
+                      ...base,
+                      color: '#1E40AF'
+                    }),
+                    multiValueRemove: (base) => ({
+                      ...base,
+                      color: '#1E40AF',
+                      '&:hover': {
+                        backgroundColor: '#DBEAFE',
+                        color: '#1E3A8A'
+                      }
+                    })
+                  }}
+                />
+              );
+            
             default: // text
               return (
                 <input
@@ -588,7 +714,7 @@ export default function DocumentGenerator({
 
         <button
           onClick={() => setIsEditing(!isEditing)}
-          disabled={generating || isSaving}
+          disabled={generating || isSaving || isTextEditing}
           className={`px-4 py-2 rounded ${
             isEditing ? 'bg-gray-600 text-white hover:bg-gray-700' : 'bg-purple-600 text-white hover:bg-purple-700'
           } btn`}
@@ -608,13 +734,44 @@ export default function DocumentGenerator({
             {isSaving ? 'Saving...' : responseId ? 'Save Changes' : 'Apply Changes'}
           </button>
         )}
+
+        <button
+          onClick={() => setIsTextEditing(!isTextEditing)}
+          disabled={generating || isSaving || isEditing}
+          className={`px-4 py-2 rounded ${
+            isTextEditing ? 'bg-gray-600 text-white hover:bg-gray-700' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+          } btn`}
+        >
+          {isTextEditing ? 'Cancel Text Editing' : 'Edit Text'}
+        </button>
+
+        {isTextEditing && (
+          <button
+            onClick={saveEditedText}
+            disabled={generating || isSaving}
+            className={`px-4 py-2 rounded ${
+              isSaving ? 'bg-gray-400' : 'bg-teal-600 text-white hover:bg-teal-700'
+            } btn`}
+            title={!responseId ? 'Changes will only apply to the current preview' : ''}
+          >
+            {isSaving ? 'Saving...' : responseId ? 'Save Text' : 'Apply Text Changes'}
+          </button>
+        )}
       </div>
       
       <div className="mt-4 p-4 border rounded bg-gray-50">
         <h4 className="font-medium mb-2">Preview</h4>
-        <div className="whitespace-pre-wrap font-mono text-sm">
-          {renderPreviewContent()}
-        </div>
+        {isTextEditing ? (
+          <textarea
+            value={editedText}
+            onChange={(e) => setEditedText(e.target.value)}
+            className="w-full h-64 p-2 font-mono text-sm border rounded"
+          />
+        ) : (
+          <div className="whitespace-pre-wrap font-mono text-sm">
+            {renderPreviewContent()}
+          </div>
+        )}
       </div>
     </div>
   );

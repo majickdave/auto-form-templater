@@ -220,9 +220,6 @@ export default function FormPage() {
           .eq('id', formId);
 
         if (error) throw error;
-        
-        // Redirect to the dashboard instead of the form page
-        router.push('/dashboard');
       }
       
     } catch (err: any) {

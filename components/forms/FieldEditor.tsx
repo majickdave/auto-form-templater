@@ -86,7 +86,7 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
   // Reset field-specific state when field type changes
   useEffect(() => {
     // Initialize options if switching to a field type that needs them
-    if ((fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox') && 
+    if ((fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox' || fieldType === 'multiselect') && 
         (!options.length || field.type !== fieldType)) {
       setOptions(['Option 1', 'Option 2']);
       setSelectedOptions([]);
@@ -94,7 +94,7 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
     
     // Reset placeholder for appropriate field types
     if (fieldType !== field.type) {
-      if (fieldType === 'select') {
+      if (fieldType === 'select' || fieldType === 'multiselect') {
         setPlaceholder('Select an option');
       } else if (fieldType === 'text' || fieldType === 'textarea' || fieldType === 'number' || fieldType === 'email') {
         setPlaceholder(`Enter ${fieldType}...`);
@@ -114,8 +114,8 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
       label,
       placeholder,
       required,
-      options: (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox') ? options : undefined,
-      defaultValue: fieldType === 'checkbox' 
+      options: (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox' || fieldType === 'multiselect') ? options : undefined,
+      defaultValue: fieldType === 'checkbox' || fieldType === 'multiselect'
         ? selectedOptions 
         : fieldType === 'radio' || fieldType === 'select'
           ? selectedOptions[0] || ''
@@ -123,13 +123,13 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
       metadata: {
         label,
         type: fieldType,
-        default_value: fieldType === 'checkbox' 
+        default_value: fieldType === 'checkbox' || fieldType === 'multiselect'
           ? selectedOptions 
           : fieldType === 'radio' || fieldType === 'select'
             ? selectedOptions[0] || null
             : defaultValue || null,
         required,
-        options: (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox') ? options : null,
+        options: (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox' || fieldType === 'multiselect') ? options : null,
         placeholder: placeholder || null
       }
     };
@@ -186,7 +186,7 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
   
   // Toggle option selection for checkbox
   const toggleOptionSelection = (option: string) => {
-    if (fieldType === 'checkbox') {
+    if (fieldType === 'checkbox' || fieldType === 'multiselect') {
       if (selectedOptions.includes(option)) {
         setSelectedOptions(selectedOptions.filter(opt => opt !== option));
       } else {
@@ -222,8 +222,8 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
       label,
       placeholder,
       required,
-      options: (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox') ? options : undefined,
-      defaultValue: fieldType === 'checkbox' 
+      options: (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox' || fieldType === 'multiselect') ? options : undefined,
+      defaultValue: fieldType === 'checkbox' || fieldType === 'multiselect'
         ? selectedOptions 
         : fieldType === 'radio' || fieldType === 'select'
           ? selectedOptions[0] || ''
@@ -231,13 +231,13 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
       metadata: {
         label,
         type: fieldType,
-        default_value: fieldType === 'checkbox' 
+        default_value: fieldType === 'checkbox' || fieldType === 'multiselect'
           ? selectedOptions 
           : fieldType === 'radio' || fieldType === 'select'
             ? selectedOptions[0] || null
             : defaultValue || null,
         required,
-        options: (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox') ? options : null,
+        options: (fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox' || fieldType === 'multiselect') ? options : null,
         placeholder: placeholder || null
       }
     };
@@ -384,7 +384,7 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
         </div>
       )}
       
-      {(fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox') && (
+      {(fieldType === 'select' || fieldType === 'radio' || fieldType === 'checkbox' || fieldType === 'multiselect') && (
         <div>
           <div className="flex justify-between items-center mb-2">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Options</label>
@@ -399,6 +399,33 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
               Add Option
             </button>
           </div>
+
+          {/* Default Value Selector for Dropdown */}
+          {(fieldType === 'select' || fieldType === 'multiselect') && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Default Value
+              </label>
+              <select
+                value={selectedOptions[0] || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSelectedOptions(value ? [value] : []);
+                }}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors"
+              >
+                <option value="">Select a default value</option>
+                {options.map((option, index) => (
+                  <option key={index} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {fieldType === 'select' ? 'Select the default option that will be pre-selected' : 'Select the default options that will be pre-selected'}
+              </p>
+            </div>
+          )}
           
           {/* Bulk add options */}
           <div className="mb-3">
@@ -438,7 +465,7 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
             <div className="space-y-2">
               {options.map((option, index) => (
                 <div key={`preview-${index}`} className="flex items-center">
-                  {fieldType === 'checkbox' ? (
+                  {fieldType === 'checkbox' || fieldType === 'multiselect' ? (
                     <input
                       type="checkbox"
                       checked={selectedOptions.includes(option)}
@@ -464,7 +491,7 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
                 </div>
               ))}
             </div>
-            {fieldType === 'checkbox' && (
+            {(fieldType === 'checkbox' || fieldType === 'multiselect') && (
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 Check options to set as default selected
               </p>

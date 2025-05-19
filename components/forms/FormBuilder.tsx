@@ -313,10 +313,10 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || fields.length === 0 || !formTitle}
-              className={`px-4 py-2 rounded-lg text-white font-medium transition-all duration-200 ${
+              className={`px-4 py-2 rounded-lg text-white font-medium transition-all duration-200 flex items-center ${
                 isSubmitting || fields.length === 0 || !formTitle
                   ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800'
+                  : 'bg-gray-600 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-800'
               }`}
             >
               {isSubmitting ? (
@@ -328,7 +328,12 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
                   Saving...
                 </div>
               ) : (
-                'Save Form'
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                  </svg>
+                  Save Form
+                </>
               )}
             </button>
           </div>

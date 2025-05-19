@@ -4,6 +4,15 @@ import { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import { supabase } from '@/lib/supabase';
 import Select from 'react-select';
+import { 
+  FileText, 
+  FileDown, 
+  Edit, 
+  Save, 
+  X, 
+  Type, 
+  CheckCircle 
+} from 'lucide-react';
 
 interface DocumentGeneratorProps {
   templateContent: string;
@@ -698,66 +707,90 @@ export default function DocumentGenerator({
         <button
           onClick={generatePDF}
           disabled={generating}
-          className={`px-4 py-2 rounded ${
-            generating ? 'bg-gray-400' : 'bg-blue-600 text-white hover:bg-blue-700'
-          } btn`}
+          className={`px-4 py-2 rounded flex items-center space-x-2 ${
+            generating ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'
+          } border shadow-sm`}
         >
-          {generating ? 'Generating...' : 'Generate PDF'}
+          <FileText className="w-5 h-5" />
+          <span>{generating ? 'Generating...' : 'Generate PDF'}</span>
         </button>
         
         <button
           onClick={generateTextFile}
           disabled={generating}
-          className={`px-4 py-2 rounded ${
-            generating ? 'bg-gray-400' : 'bg-green-600 text-white hover:bg-green-700'
-          } btn`}
+          className={`px-4 py-2 rounded flex items-center space-x-2 ${
+            generating ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'
+          } border shadow-sm`}
         >
-          {generating ? 'Generating...' : 'Generate Text File'}
+          <FileDown className="w-5 h-5" />
+          <span>{generating ? 'Generating...' : 'Generate Text File'}</span>
         </button>
 
         <button
           onClick={() => setIsEditing(!isEditing)}
           disabled={generating || isSaving || isTextEditing}
-          className={`px-4 py-2 rounded ${
-            isEditing ? 'bg-gray-600 text-white hover:bg-gray-700' : 'bg-purple-600 text-white hover:bg-purple-700'
-          } btn`}
+          className={`px-4 py-2 rounded flex items-center space-x-2 ${
+            isEditing ? 'bg-gray-100 text-gray-700' : 'bg-white text-gray-700 hover:bg-gray-50'
+          } border shadow-sm`}
         >
-          {isEditing ? 'Cancel Editing' : 'Edit Variables'}
+          {isEditing ? (
+            <>
+              <X className="w-5 h-5" />
+              <span>Cancel Editing</span>
+            </>
+          ) : (
+            <>
+              <Edit className="w-5 h-5" />
+              <span>Edit Variables</span>
+            </>
+          )}
         </button>
 
         {isEditing && (
           <button
             onClick={saveChanges}
             disabled={generating || isSaving}
-            className={`px-4 py-2 rounded ${
-              isSaving ? 'bg-gray-400' : 'bg-amber-600 text-white hover:bg-amber-700'
-            } btn`}
+            className={`px-4 py-2 rounded flex items-center space-x-2 ${
+              isSaving ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'
+            } border shadow-sm`}
             title={!responseId ? 'Changes will only apply to the current preview' : ''}
           >
-            {isSaving ? 'Saving...' : responseId ? 'Save Changes' : 'Apply Changes'}
+            <Save className="w-5 h-5" />
+            <span>{isSaving ? 'Saving...' : responseId ? 'Save Changes' : 'Apply Changes'}</span>
           </button>
         )}
 
         <button
           onClick={() => setIsTextEditing(!isTextEditing)}
           disabled={generating || isSaving || isEditing}
-          className={`px-4 py-2 rounded ${
-            isTextEditing ? 'bg-gray-600 text-white hover:bg-gray-700' : 'bg-indigo-600 text-white hover:bg-indigo-700'
-          } btn`}
+          className={`px-4 py-2 rounded flex items-center space-x-2 ${
+            isTextEditing ? 'bg-gray-100 text-gray-700' : 'bg-white text-gray-700 hover:bg-gray-50'
+          } border shadow-sm`}
         >
-          {isTextEditing ? 'Cancel Text Editing' : 'Edit Text'}
+          {isTextEditing ? (
+            <>
+              <X className="w-5 h-5" />
+              <span>Cancel Text Editing</span>
+            </>
+          ) : (
+            <>
+              <Type className="w-5 h-5" />
+              <span>Edit Text</span>
+            </>
+          )}
         </button>
 
         {isTextEditing && (
           <button
             onClick={saveEditedText}
             disabled={generating || isSaving}
-            className={`px-4 py-2 rounded ${
-              isSaving ? 'bg-gray-400' : 'bg-teal-600 text-white hover:bg-teal-700'
-            } btn`}
+            className={`px-4 py-2 rounded flex items-center space-x-2 ${
+              isSaving ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'
+            } border shadow-sm`}
             title={!responseId ? 'Changes will only apply to the current preview' : ''}
           >
-            {isSaving ? 'Saving...' : responseId ? 'Save Text' : 'Apply Text Changes'}
+            <CheckCircle className="w-5 h-5" />
+            <span>{isSaving ? 'Saving...' : responseId ? 'Save Text' : 'Apply Text Changes'}</span>
           </button>
         )}
       </div>

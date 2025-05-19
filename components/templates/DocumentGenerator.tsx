@@ -385,7 +385,10 @@ export default function DocumentGenerator({
       const { error } = await supabase
         .from('form_responses')
         .update({
-          edited_text: editedText
+          data: {
+            ...formResponses,
+            edited_text: editedText
+          }
         })
         .eq('id', responseId);
 

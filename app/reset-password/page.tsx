@@ -1,73 +1,36 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
 export default function ResetPasswordPage() {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'error' | 'success'>('error');
   const router = useRouter();
 
-  // Check if we have a hash in the URL (this means we're in a password reset flow)
-  useEffect(() => {
-    const checkSession = async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.getSession();
-      
-      // If no session and no hash in URL, redirect to login
-      if (!data.session && !window.location.hash) {
-        setMessage('Invalid or expired password reset link. Please request a new one.');
-        setMessageType('error');
-      }
-    };
-    
-    checkSession();
-  }, [router]);
-
-  const handleResetPassword = async (e: React.FormEvent) => {
+  const handleResetRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage('');
 
-    // Validate passwords
-    if (password !== confirmPassword) {
-      setMessage('Passwords do not match');
-      setMessageType('error');
-      setLoading(false);
-      return;
-    }
-
-    if (password.length < 6) {
-      setMessage('Password must be at least 6 characters');
-      setMessageType('error');
-      setLoading(false);
-      return;
-    }
-
     try {
       const supabase = createClient();
       
-      const { error } = await supabase.auth.updateUser({
-        password: password
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password/update`,
       });
 
       if (error) throw error;
       
-      setMessage('Password updated successfully! Redirecting to login...');
+      setMessage('Password reset instructions have been sent to your email.');
       setMessageType('success');
       
-      // Redirect to login after successful password reset
-      setTimeout(() => {
-        router.push('/login');
-      }, 2000);
-      
     } catch (error: any) {
-      console.error('Password reset error:', error);
-      setMessage(error.message || 'An error occurred during password reset');
+      console.error('Password reset request error:', error);
+      setMessage(error.message || 'An error occurred while requesting password reset');
       setMessageType('error');
     } finally {
       setLoading(false);
@@ -82,43 +45,26 @@ export default function ResetPasswordPage() {
             Reset your password
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your new password below
+            Enter your email address and we'll send you instructions to reset your password
           </p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleResetPassword}>
+        <form className="mt-8 space-y-6" onSubmit={handleResetRequest}>
           <div className="rounded-md shadow-sm -space-y-px">
-            <div className="mb-4">
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                New Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="New password"
-              />
-            </div>
-            
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm New Password
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email address
               </label>
               <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
                 required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Confirm new password"
+                placeholder="Enter your email"
               />
             </div>
           </div>
@@ -135,7 +81,7 @@ export default function ResetPasswordPage() {
               disabled={loading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              {loading ? 'Updating...' : 'Reset Password'}
+              {loading ? 'Sending...' : 'Send Reset Instructions'}
             </button>
           </div>
         </form>

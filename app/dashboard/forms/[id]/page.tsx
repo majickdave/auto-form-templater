@@ -257,12 +257,30 @@ export default function FormPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           {isNewForm ? 'Create New Form' : 'Edit Form'}
         </h1>
-        <Link 
-          href="/dashboard"
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-        >
-          Cancel
-        </Link>
+        <div className="flex gap-2">
+          {!isNewForm && (
+            <>
+              <Link 
+                href={`/dashboard/forms/${formId}/responses`}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                View Responses
+              </Link>
+              <Link 
+                href={`/dashboard/forms/${formId}/new-response`}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                New Response
+              </Link>
+            </>
+          )}
+          <Link 
+            href="/dashboard"
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+          >
+            Cancel
+          </Link>
+        </div>
       </div>
 
       {isNewForm && !fromTemplate && (

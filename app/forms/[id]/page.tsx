@@ -309,6 +309,25 @@ export default function PublicFormPage() {
                     </select>
                   )}
                   
+                  {field.type === 'multiselect' && field.options && (
+                    <select
+                      multiple
+                      value={Array.isArray(formData[field.id]) ? formData[field.id] : []}
+                      onChange={(e) => {
+                        const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                        handleFieldChange(field.id, selectedOptions);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      required={field.required}
+                    >
+                      {field.options.map((option: string) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  
                   {field.type === 'checkbox' && field.options && (
                     <div className="space-y-2 mt-2">
                       {field.options.map((option: string) => (

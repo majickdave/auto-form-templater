@@ -3,7 +3,64 @@
 import { useState, useEffect } from 'react';
 
 // Define types for our form fields
-type FieldType = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date' | 'number' | 'email';
+type FieldType = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date' | 'number' | 'email' | 'multiselect';
+
+const fieldTypes = [
+  {
+    type: 'text',
+    label: 'Text Field',
+    description: 'Single line text input',
+    icon: 'M4 6h16M4 12h16M4 18h7'
+  },
+  {
+    type: 'textarea',
+    label: 'Text Area',
+    description: 'Multi-line text input',
+    icon: 'M4 6h16M4 12h16m-7 6h7'
+  },
+  {
+    type: 'number',
+    label: 'Number',
+    description: 'Numeric input field',
+    icon: 'M7 20l4-16m2 16l4-16M6 9h14M4 15h14'
+  },
+  {
+    type: 'email',
+    label: 'Email',
+    description: 'Email input field',
+    icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
+  },
+  {
+    type: 'date',
+    label: 'Date',
+    description: 'Date picker field',
+    icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
+  },
+  {
+    type: 'select',
+    label: 'Dropdown',
+    description: 'Select from options',
+    icon: 'M19 9l-7 7-7-7'
+  },
+  {
+    type: 'multiselect',
+    label: 'Multi-Select Dropdown',
+    description: 'Select multiple options from dropdown',
+    icon: 'M19 9l-7 7-7-7'
+  },
+  {
+    type: 'radio',
+    label: 'Radio Buttons',
+    description: 'Select one option',
+    icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+  },
+  {
+    type: 'checkbox',
+    label: 'Checkboxes',
+    description: 'Select multiple options',
+    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'
+  }
+];
 
 interface FieldEditorProps {
   field: any;
@@ -23,6 +80,8 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
   );
   const [fieldType, setFieldType] = useState<FieldType>(field.type);
   const [bulkOptions, setBulkOptions] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Reset field-specific state when field type changes
   useEffect(() => {
@@ -187,24 +246,108 @@ export default function FieldEditor({ field, onSave, onCancel }: FieldEditorProp
     field._currentState = updatedField;
   }, [field, fieldType, label, placeholder, required, options, defaultValue, selectedOptions]);
   
+  const filteredFieldTypes = fieldTypes.filter(type => type.label.toLowerCase().includes(searchQuery.toLowerCase()));
+  
   return (
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Field Type</label>
-        <select
-          value={fieldType}
-          onChange={(e) => setFieldType(e.target.value as FieldType)}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors"
-        >
-          <option value="text">Text</option>
-          <option value="textarea">Text Area</option>
-          <option value="number">Number</option>
-          <option value="email">Email</option>
-          <option value="date">Date</option>
-          <option value="select">Dropdown</option>
-          <option value="radio">Radio Buttons</option>
-          <option value="checkbox">Checkboxes</option>
-        </select>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors"
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-md bg-gray-100 dark:bg-gray-700 mr-3">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 text-gray-500 dark:text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={fieldTypes.find(t => t.type === fieldType)?.icon || ''} />
+                </svg>
+              </div>
+              <div className="text-left">
+                <div className="font-medium">{fieldTypes.find(t => t.type === fieldType)?.label}</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">{fieldTypes.find(t => t.type === fieldType)?.description}</div>
+              </div>
+            </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 text-gray-400"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+
+          {dropdownOpen && (
+            <div className="absolute z-10 mt-1 w-full rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <div className="p-2">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search field types..."
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-white transition-colors"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-60 overflow-y-auto py-1">
+                  {filteredFieldTypes.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
+                      No field types match your search
+                    </div>
+                  ) : (
+                    filteredFieldTypes.map((type) => (
+                      <button
+                        key={type.type}
+                        type="button"
+                        onClick={() => {
+                          setFieldType(type.type as FieldType);
+                          setDropdownOpen(false);
+                          setSearchQuery('');
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-start gap-3 group"
+                      >
+                        <div className="flex-shrink-0 w-8 h-8 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mt-0.5 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/40 transition-colors">
+                          <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={type.icon} />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">{type.label}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{type.description}</div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       
       <div>

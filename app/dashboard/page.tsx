@@ -33,13 +33,13 @@ type Form = {
   };
 };
 
-interface FormResponse {
+type FormResponse = {
   id: string;
   form_id: string;
   data: Record<string, any>;
   submitted_at: string;
   respondent_email?: string;
-}
+};
 
 export default function Dashboard() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -51,6 +51,9 @@ export default function Dashboard() {
   const [formResponseCounts, setFormResponseCounts] = useState<Record<string, number>>({});
   const [isDeleting, setIsDeleting] = useState<{id: string, type: 'form' | 'template'} | null>(null);
   const [copiedFormId, setCopiedFormId] = useState<string | null>(null);
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+  const [selectedFormResponses, setSelectedFormResponses] = useState<FormResponse[]>([]);
+  const [isLoadingResponses, setIsLoadingResponses] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -128,6 +131,37 @@ export default function Dashboard() {
     
     fetchData();
   }, [router]);
+
+  useEffect(() => {
+    async function fetchFormResponses() {
+      if (!selectedFormId) {
+        setSelectedFormResponses([]);
+        return;
+      }
+
+      setIsLoadingResponses(true);
+      try {
+        const { data: responses, error } = await supabase
+          .from('form_responses')
+          .select('*')
+          .eq('form_id', selectedFormId)
+          .order('submitted_at', { ascending: false });
+
+        if (error) throw error;
+        setSelectedFormResponses(responses || []);
+      } catch (err) {
+        console.error('Error fetching form responses:', err);
+        setNotification({
+          message: 'Failed to load form responses',
+          type: 'error'
+        });
+      } finally {
+        setIsLoadingResponses(false);
+      }
+    }
+
+    fetchFormResponses();
+  }, [selectedFormId]);
 
   // Function to refresh data
   const refreshData = async () => {
@@ -219,8 +253,7 @@ export default function Dashboard() {
 
   // Function to open form in a new window
   const openFormInNewWindow = (formId: string) => {
-    const formUrl = `${window.location.origin}/forms/${formId}`;
-    window.open(formUrl, '_blank');
+    router.push(`/forms/${formId}/new-response`);
   };
 
   // Function to handle template association
@@ -736,10 +769,21 @@ export default function Dashboard() {
               {forms.length > 0 ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {forms.map((form) => (
-                    <div key={form.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 relative group">
+                    <div 
+                      key={form.id} 
+                      className={`bg-white dark:bg-gray-800 border ${
+                        selectedFormId === form.id 
+                          ? 'border-blue-500 dark:border-blue-400 ring-2 ring-blue-500 dark:ring-blue-400' 
+                          : 'border-gray-200 dark:border-gray-700'
+                      } rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 relative group cursor-pointer`}
+                      onClick={() => setSelectedFormId(form.id)}
+                    >
                       <div className="p-5">
                         <button
-                          onClick={() => handleDeleteForm(form.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteForm(form.id);
+                          }}
                           className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors opacity-0 group-hover:opacity-100"
                           disabled={isDeleting !== null}
                           title="Delete form"
@@ -778,7 +822,10 @@ export default function Dashboard() {
                         
                         <div className="flex flex-wrap gap-2">
                           <button
-                            onClick={() => copyShareLink(form.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyShareLink(form.id);
+                            }}
                             className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors flex items-center gap-1.5"
                             title="Copy share link"
                           >
@@ -788,7 +835,10 @@ export default function Dashboard() {
                             {copiedFormId === form.id ? 'Copied!' : 'Share'}
                           </button>
                           <button
-                            onClick={() => openFormInNewWindow(form.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openFormInNewWindow(form.id);
+                            }}
                             className="px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors flex items-center gap-1.5"
                             title="Open form in new window"
                           >
@@ -823,7 +873,10 @@ export default function Dashboard() {
                         <div className="px-5 pb-5">
                           {formResponseCounts[form.id] > 0 ? (
                             <button
-                              onClick={() => navigateToResponses(form.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigateToResponses(form.id);
+                              }}
                               className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg transition-all duration-200 flex items-center justify-center"
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -835,7 +888,10 @@ export default function Dashboard() {
                             <div className="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-300">
                               <p className="mb-2">No responses yet. Share your form to collect responses.</p>
                               <button
-                                onClick={() => copyShareLink(form.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyShareLink(form.id);
+                                }}
                                 className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"
                               >
                                 Copy Form Link
@@ -859,7 +915,10 @@ export default function Dashboard() {
                           <select
                             id={`template-${form.id}`}
                             value={formTemplateMapping[form.id] || ''}
-                            onChange={(e) => handleTemplateAssociation(form.id, e.target.value === '' ? null : e.target.value)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleTemplateAssociation(form.id, e.target.value === '' ? null : e.target.value);
+                            }}
                             disabled={isUpdatingTemplate === form.id}
                             className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 sm:text-sm rounded-lg transition-colors"
                           >
@@ -889,6 +948,74 @@ export default function Dashboard() {
                           )}
                         </div>
                       </div>
+
+                      {/* Form Responses Section - Only show when form is selected */}
+                      {selectedFormId === form.id && (
+                        <div className="border-t border-gray-200 dark:border-gray-700">
+                          <div className="px-5 py-4">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                              Recent Responses
+                            </h4>
+                            
+                            {isLoadingResponses ? (
+                              <div className="flex justify-center py-4">
+                                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 dark:border-blue-400"></div>
+                              </div>
+                            ) : selectedFormResponses.length > 0 ? (
+                              <div className="space-y-3">
+                                {selectedFormResponses.slice(0, 3).map((response) => (
+                                  <div 
+                                    key={response.id}
+                                    className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(`/dashboard/forms/${form.id}/responses`);
+                                    }}
+                                  >
+                                    <div className="flex justify-between items-start mb-2">
+                                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                                        {response.respondent_email || 'Anonymous'}
+                                      </div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        {new Date(response.submitted_at).toLocaleDateString()}
+                                      </div>
+                                    </div>
+                                    <div className="text-sm text-gray-700 dark:text-gray-200 line-clamp-2">
+                                      {Object.entries(response.data)
+                                        .map(([key, value]) => `${key}: ${value}`)
+                                        .join(', ')}
+                                    </div>
+                                  </div>
+                                ))}
+                                
+                                {selectedFormResponses.length > 3 && (
+                                  <Link
+                                    href={`/dashboard/forms/${form.id}/responses`}
+                                    className="block text-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 py-2"
+                                  >
+                                    View all {selectedFormResponses.length} responses
+                                  </Link>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-center py-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  No responses yet. Share your form to collect responses.
+                                </p>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    copyShareLink(form.id);
+                                  }}
+                                  className="mt-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"
+                                >
+                                  Copy Form Link
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -936,7 +1063,10 @@ export default function Dashboard() {
                     <div key={template.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200 relative group">
                       <div className="p-5">
                         <button
-                          onClick={() => handleDeleteTemplate(template.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTemplate(template.id);
+                          }}
                           className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors opacity-0 group-hover:opacity-100"
                           disabled={isDeleting !== null}
                           title="Delete template"

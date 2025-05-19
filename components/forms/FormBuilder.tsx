@@ -19,9 +19,10 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import AddFieldButton from './AddFieldButton';
 
 // Define types for our form fields
-type FieldType = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date' | 'number' | 'email';
+type FieldType = 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'date' | 'number' | 'email' | 'multiselect';
 
 interface FormField {
   id: string;
@@ -78,16 +79,9 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
   const [activeField, setActiveField] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<any | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [focusedItemIndex, setFocusedItemIndex] = useState(-1);
-  const [searchQuery, setSearchQuery] = useState('');
   const [showEditorModal, setShowEditorModal] = useState(false);
   const [autoSaving, setAutoSaving] = useState(false);
   
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuItemsRef = useRef<(HTMLButtonElement | null)[]>([]);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
   
   // Clean up auto-save timeout on unmount
@@ -98,101 +92,6 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
       }
     };
   }, []);
-  
-  // Field types with icons and descriptions
-  const fieldTypes = [
-    { type: 'text', label: 'Text Field', icon: 'M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z', description: 'Single line text input' },
-    { type: 'textarea', label: 'Text Area', icon: 'M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zm1 3h14M5 14h14', description: 'Multi-line text input' },
-    { type: 'select', label: 'Dropdown', icon: 'M8 9l4-4 4 4m0 6l-4 4-4-4', description: 'Select from a list of options' },
-    { type: 'radio', label: 'Radio Buttons', icon: 'M12 22a10 10 0 100-20 10 10 0 000 20zm0-6a4 4 0 100-8 4 4 0 000 8z', description: 'Choose one option from a list' },
-    { type: 'checkbox', label: 'Checkboxes', icon: 'M5 13l4 4L19 7', description: 'Choose multiple options from a list' },
-    { type: 'date', label: 'Date', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', description: 'Date picker input' },
-    { type: 'number', label: 'Number', icon: 'M7 20l4-16m2 16l4-16M6 9h14M4 15h14', description: 'Numeric input field' },
-    { type: 'email', label: 'Email', icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', description: 'Email address input' },
-  ];
-  
-  // Filter field types based on search query
-  const filteredFieldTypes = searchQuery
-    ? fieldTypes.filter(field => 
-        field.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        field.description.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : fieldTypes;
-  
-  // Reset focused item when dropdown opens/closes or when search query changes
-  useEffect(() => {
-    setFocusedItemIndex(dropdownOpen ? 0 : -1);
-    
-    // Focus the search input when dropdown opens
-    if (dropdownOpen && searchInputRef.current) {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 10);
-    }
-  }, [dropdownOpen, searchQuery]);
-  
-  // Handle click outside to close dropdown
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false);
-        setSearchQuery('');
-      }
-    }
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-  
-  // Handle keyboard navigation
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (!dropdownOpen) return;
-      
-      if (event.key === 'Escape') {
-        setDropdownOpen(false);
-        setSearchQuery('');
-        buttonRef.current?.focus();
-        return;
-      }
-      
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-        event.preventDefault();
-        
-        const itemCount = filteredFieldTypes.length;
-        
-        if (itemCount === 0) return;
-        
-        if (event.key === 'ArrowDown') {
-          setFocusedItemIndex((prevIndex) => {
-            const newIndex = prevIndex < itemCount - 1 ? prevIndex + 1 : 0;
-            menuItemsRef.current[newIndex]?.focus();
-            return newIndex;
-          });
-        } else {
-          setFocusedItemIndex((prevIndex) => {
-            const newIndex = prevIndex > 0 ? prevIndex - 1 : itemCount - 1;
-            menuItemsRef.current[newIndex]?.focus();
-            return newIndex;
-          });
-        }
-      }
-    }
-    
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [dropdownOpen, filteredFieldTypes.length]);
-  
-  // Reset menu items ref when dropdown opens
-  useEffect(() => {
-    if (dropdownOpen) {
-      menuItemsRef.current = menuItemsRef.current.slice(0, filteredFieldTypes.length);
-    }
-  }, [dropdownOpen, filteredFieldTypes.length]);
   
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -441,104 +340,7 @@ export default function FormBuilder({ onSubmit, isSubmitting, initialData, templ
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">Form Fields</h3>
-              
-              <div className="relative inline-block text-left" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="inline-flex justify-center items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 rounded-lg transition-colors shadow-sm"
-                  aria-haspopup="true"
-                  aria-expanded={dropdownOpen}
-                  id="add-field-menu-button"
-                  ref={buttonRef}
-                  onKeyDown={(e) => {
-                    if (e.key === 'ArrowDown' && !dropdownOpen) {
-                      e.preventDefault();
-                      setDropdownOpen(true);
-                    }
-                  }}
-                >
-                  <svg 
-                    className="w-5 h-5 mr-2" 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  <span>Add Field</span>
-                  <svg 
-                    className={`w-4 h-4 ml-2 transition-transform duration-200 ${dropdownOpen ? 'transform rotate-180' : ''}`} 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    viewBox="0 0 20 20" 
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-                {dropdownOpen && (
-                  <div 
-                    className="absolute right-0 mt-2 w-72 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-10 overflow-hidden"
-                    role="menu"
-                    aria-orientation="vertical"
-                    aria-labelledby="add-field-menu-button"
-                  >
-                    <div className="p-2 border-b border-gray-200 dark:border-gray-700">
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <svg className="h-4 w-4 text-gray-400 dark:text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
-                        </div>
-                        <input
-                          type="text"
-                          className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400"
-                          placeholder="Search field types..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          ref={searchInputRef}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="max-h-60 overflow-y-auto py-1" role="none">
-                      {filteredFieldTypes.length === 0 ? (
-                        <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
-                          No field types match your search
-                        </div>
-                      ) : (
-                        filteredFieldTypes.map((fieldType, index) => (
-                          <button
-                            key={fieldType.type}
-                            type="button"
-                            onClick={() => {
-                              addField(fieldType.type as FieldType);
-                              setDropdownOpen(false);
-                              setSearchQuery('');
-                            }}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-start gap-3 group"
-                            role="menuitem"
-                            tabIndex={0}
-                            ref={(el) => { menuItemsRef.current[index] = el; }}
-                          >
-                            <div className="flex-shrink-0 w-8 h-8 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mt-0.5 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/40 transition-colors">
-                              <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={fieldType.icon} />
-                              </svg>
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-900 dark:text-white">{fieldType.label}</div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{fieldType.description}</div>
-                            </div>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <AddFieldButton onAddField={addField} />
             </div>
             
             {fields.length === 0 ? (

@@ -9,6 +9,17 @@ interface DocumentGeneratorProps {
   formResponses: Record<string, any>;
   templateName: string;
   responseId?: string; // Optional ID of the form response for saving changes
+  formFields?: FormField[]; // Add form fields to get field types
+}
+
+interface FormField {
+  id: string;
+  type: string;
+  label: string;
+  required: boolean;
+  options?: string[];
+  placeholder?: string;
+  defaultValue?: string | string[];
 }
 
 // Interface for tracking replaced content
@@ -23,7 +34,8 @@ export default function DocumentGenerator({
   templateContent, 
   formResponses, 
   templateName,
-  responseId
+  responseId,
+  formFields = []
 }: DocumentGeneratorProps) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
@@ -346,6 +358,39 @@ export default function DocumentGenerator({
     }
   };
 
+  // Function to get field type for a placeholder
+  const getFieldTypeForPlaceholder = (placeholder: string): string => {
+    // First try exact match
+    const exactMatch = formFields.find(field => field.label === placeholder);
+    if (exactMatch) return exactMatch.type;
+
+    // Try case-insensitive match
+    const normalizedPlaceholder = placeholder.toLowerCase().replace(/\s+/g, '_');
+    const caseInsensitiveMatch = formFields.find(field => 
+      field.label.toLowerCase().replace(/\s+/g, '_') === normalizedPlaceholder
+    );
+    if (caseInsensitiveMatch) return caseInsensitiveMatch.type;
+
+    // Default to text if no match found
+    return 'text';
+  };
+
+  // Function to get field options for a placeholder
+  const getFieldOptionsForPlaceholder = (placeholder: string): string[] | undefined => {
+    // First try exact match
+    const exactMatch = formFields.find(field => field.label === placeholder);
+    if (exactMatch?.options) return exactMatch.options;
+
+    // Try case-insensitive match
+    const normalizedPlaceholder = placeholder.toLowerCase().replace(/\s+/g, '_');
+    const caseInsensitiveMatch = formFields.find(field => 
+      field.label.toLowerCase().replace(/\s+/g, '_') === normalizedPlaceholder
+    );
+    if (caseInsensitiveMatch?.options) return caseInsensitiveMatch.options;
+
+    return undefined;
+  };
+
   // Render the preview content with highlighting and editing
   const renderPreviewContent = () => {
     const contentSegments = generateContent(true) as ReplacedContent[];
@@ -354,20 +399,133 @@ export default function DocumentGenerator({
       if (segment.isReplaced) {
         // Determine if this is an unfilled variable
         const isUnfilled = segment.text === '';
+        const fieldType = getFieldTypeForPlaceholder(segment.originalPlaceholder || '');
+        const fieldOptions = getFieldOptionsForPlaceholder(segment.originalPlaceholder || '');
         
         if (isEditing) {
-          // Render an input field for editable segments
-          return (
-            <input
-              key={index}
-              type="text"
-              value={segment.text}
-              onChange={(e) => handleInputChange(segment.key, e.target.value)}
-              className={`${isUnfilled ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border px-1 py-0.5 rounded text-black inline-block min-w-[100px]`}
-              title={`Editing: {{${segment.originalPlaceholder}}}${isUnfilled ? ' (unfilled)' : ''}`}
-              placeholder={isUnfilled ? `Enter ${segment.originalPlaceholder}...` : ''}
-            />
-          );
+          // Render an input field for editable segments based on field type
+          switch (fieldType) {
+            case 'select':
+              return (
+                <select
+                  key={index}
+                  value={segment.text}
+                  onChange={(e) => handleInputChange(segment.key, e.target.value)}
+                  className={`${isUnfilled ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border px-1 py-0.5 rounded text-black inline-block min-w-[100px]`}
+                  title={`Editing: {{${segment.originalPlaceholder}}}${isUnfilled ? ' (unfilled)' : ''}`}
+                >
+                  <option value="">Select an option</option>
+                  {fieldOptions?.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              );
+            
+            case 'radio':
+              return (
+                <div key={index} className="inline-block">
+                  {fieldOptions?.map((option) => (
+                    <label key={option} className="inline-flex items-center mr-2">
+                      <input
+                        type="radio"
+                        value={option}
+                        checked={segment.text === option}
+                        onChange={(e) => handleInputChange(segment.key, e.target.value)}
+                        className={`${isUnfilled ? 'border-red-300' : 'border-yellow-300'} mr-1`}
+                      />
+                      {option}
+                    </label>
+                  ))}
+                </div>
+              );
+            
+            case 'checkbox':
+              const currentValues = Array.isArray(segment.text) ? segment.text : segment.text ? [segment.text] : [];
+              return (
+                <div key={index} className="inline-block">
+                  {fieldOptions?.map((option) => (
+                    <label key={option} className="inline-flex items-center mr-2">
+                      <input
+                        type="checkbox"
+                        value={option}
+                        checked={currentValues.includes(option)}
+                        onChange={(e) => {
+                          const newValues = e.target.checked
+                            ? [...currentValues, option]
+                            : currentValues.filter(v => v !== option);
+                          handleInputChange(segment.key, newValues.join(', '));
+                        }}
+                        className={`${isUnfilled ? 'border-red-300' : 'border-yellow-300'} mr-1`}
+                      />
+                      {option}
+                    </label>
+                  ))}
+                </div>
+              );
+            
+            case 'date':
+              return (
+                <input
+                  key={index}
+                  type="date"
+                  value={segment.text}
+                  onChange={(e) => handleInputChange(segment.key, e.target.value)}
+                  className={`${isUnfilled ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border px-1 py-0.5 rounded text-black inline-block min-w-[100px]`}
+                  title={`Editing: {{${segment.originalPlaceholder}}}${isUnfilled ? ' (unfilled)' : ''}`}
+                />
+              );
+            
+            case 'number':
+              return (
+                <input
+                  key={index}
+                  type="number"
+                  value={segment.text}
+                  onChange={(e) => handleInputChange(segment.key, e.target.value)}
+                  className={`${isUnfilled ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border px-1 py-0.5 rounded text-black inline-block min-w-[100px]`}
+                  title={`Editing: {{${segment.originalPlaceholder}}}${isUnfilled ? ' (unfilled)' : ''}`}
+                />
+              );
+            
+            case 'email':
+              return (
+                <input
+                  key={index}
+                  type="email"
+                  value={segment.text}
+                  onChange={(e) => handleInputChange(segment.key, e.target.value)}
+                  className={`${isUnfilled ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border px-1 py-0.5 rounded text-black inline-block min-w-[100px]`}
+                  title={`Editing: {{${segment.originalPlaceholder}}}${isUnfilled ? ' (unfilled)' : ''}`}
+                  placeholder={isUnfilled ? `Enter ${segment.originalPlaceholder}...` : ''}
+                />
+              );
+            
+            case 'textarea':
+              return (
+                <textarea
+                  key={index}
+                  value={segment.text}
+                  onChange={(e) => handleInputChange(segment.key, e.target.value)}
+                  className={`${isUnfilled ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border px-1 py-0.5 rounded text-black inline-block min-w-[100px]`}
+                  title={`Editing: {{${segment.originalPlaceholder}}}${isUnfilled ? ' (unfilled)' : ''}`}
+                  placeholder={isUnfilled ? `Enter ${segment.originalPlaceholder}...` : ''}
+                  rows={3}
+                />
+              );
+            
+            default: // text
+              return (
+                <input
+                  key={index}
+                  type="text"
+                  value={segment.text}
+                  onChange={(e) => handleInputChange(segment.key, e.target.value)}
+                  className={`${isUnfilled ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border px-1 py-0.5 rounded text-black inline-block min-w-[100px]`}
+                  title={`Editing: {{${segment.originalPlaceholder}}}${isUnfilled ? ' (unfilled)' : ''}`}
+                  placeholder={isUnfilled ? `Enter ${segment.originalPlaceholder}...` : ''}
+                />
+              );
+          }
         } else {
           // Render a span for non-editing mode
           return (

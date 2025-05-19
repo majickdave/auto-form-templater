@@ -278,6 +278,12 @@ export default function FormResponsesPage() {
           >
             Back to Form
           </Link>
+          <Link
+            href={`/forms/${form.id}/new-response`}
+            className="px-4 py-2 bg-green-600 dark:bg-green-700 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-800 transition-colors"
+          >
+            New Response
+          </Link>
           <button
             onClick={copyFormLink}
             className={`px-4 py-2 ${copied ? 'bg-green-600 dark:bg-green-700' : 'bg-blue-600 dark:bg-blue-700'} text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors`}
@@ -355,6 +361,7 @@ export default function FormResponsesPage() {
                   formResponses={selectedResponse.data}
                   templateName={template.name}
                   responseId={selectedResponse.id}
+                  formFields={form?.fields || []}
                 />
               </div>
             ) : selectedResponse && !template ? (
